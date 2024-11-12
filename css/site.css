@@ -38,8 +38,14 @@ p.map .btn.worldwide {
     background-image: url("../images/worldwide-32.ico") !important;
 }
 
-.mapframe{
+.container
+{
+    min-width: 1000px;
 }
+
+.mapframe {
+}
+
 
 @media (min-width: 576px) {
     .container {
@@ -61,7 +67,7 @@ p.map .btn.worldwide {
 
 @media (min-width: 1200px) {
     .container {
-        max-width: 11190px;
+        max-width: 1190px;
     }
 }
 
