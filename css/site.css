@@ -1,0 +1,95 @@
+
+
+body {
+    height: 100%;
+    background-image: url("https://images.unsplash.com/photo-1452470520910-9c27ad9ba32c?ixlib=rb-0.3.5&ixid=eyJhcHBfaWQiOjEyMDd9&s=460a0d0ff2a4885a9d09ae13db8ee98c&auto=format&fit=crop&w=2191&q=80");
+    background-color: darkslategray;
+    color: #fff;
+}
+
+h3 {
+    font-size: 14px;
+}
+
+
+p.photo .btn,
+p.video .btn,
+p.map .btn
+{
+    background-repeat: no-repeat;
+    padding-left: 40px;
+    margin: 10px 0px 2px;
+    background-position-x: left;
+    background-position-y: center;
+}
+
+p.photo .btn {
+    background-image: url("../images/photo-32.ico");
+}
+
+p.video .btn {
+    background-image: url("../images/video-32.ico");
+}
+
+p.map .btn {
+    background-image: url("../images/map-32.ico");
+}
+
+p.map .btn.worldwide {
+    background-image: url("../images/worldwide-32.ico") !important;
+}
+
+.mapframe{
+}
+
+@media (min-width: 576px) {
+    .container {
+        max-width: 566px;
+    }
+}
+
+@media (min-width: 768px) {
+    .container {
+        max-width: 758px;
+    }
+}
+
+@media (min-width: 992px) {
+    .container {
+        max-width: 960px;
+    }
+}
+
+@media (min-width: 1200px) {
+    .container {
+        max-width: 11190px;
+    }
+}
+
+
+
+
+
+@media (min-width:1330px) {
+    .container {
+        max-width: 1320px
+    }
+}
+
+@media (min-width:1400px) {
+    .container {
+        max-width: 1390px
+    }
+}
+
+@media (min-width:1700px) {
+    .container {
+        max-width: 1690px;
+    }
+}
+
+@media (min-width:1920px) {
+    .container {
+        max-width: 1910px;
+    }
+}
