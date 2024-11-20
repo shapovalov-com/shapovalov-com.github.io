@@ -6,3 +6,9 @@
     color: #748E63;
 }
 
+.new {
+    background-image: url(../icons/new_marker_Green_White.png);
+    background-repeat: no-repeat;
+    background-size: 30px;
+    background-position:  top right;
+}
