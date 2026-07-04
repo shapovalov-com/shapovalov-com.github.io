@@ -3,3 +3,10 @@
 ################################################################################
 
 /.vs
+
+# Python
+__pycache__/
+*.pyc
+
+# Regenerable cached map-boundary data (re-fetched by generate_map_bg.py)
+map-generator/map-data/ne_110m_*.geojson

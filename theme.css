@@ -1,0 +1,213 @@
+/* theme.css — bare-ui theme variables (the knobs).
+   The single source of truth for every visible value the engine renders.
+   To reskin the site, edit values here — never touch bare.css.
+
+   Override contract: the order of theme.css and bare.css does not matter,
+   because bare.css only reads the variables and defines none of its own. What
+   matters is that any override sheet is linked LAST. Custom properties resolve
+   per-variable at equal specificity by source order, so a partial override of
+   a few lines replaces only the values it names; the rest flow through
+   untouched.
+
+   Dark mode: values live in a light bucket and a dark bucket, both here. The
+   dark bucket is fixed scaffold — edit its values, but never drop or duplicate
+   the @media wrapper, or a light value leaks into dark mode. */
+
+:root {
+  color-scheme: light dark;
+
+  /* ------------------------- COLOR PALETTE ---------------------------
+     Warm paper against a cool ink accent — the warm/cool tension is the
+     whole point. No color is hardcoded anywhere in the engine. */
+
+  /* Surfaces & ink */
+  --canvas:    #f3f1ec;  /* <html> viewport backdrop — the canvas    */
+                          /* behind the centered body (defaults to the */
+                          /* paper; separate from --bg so the body     */
+                          /* column can sit on a distinct frame)       */
+  --bg:        #f3f1ec;  /* body page background — warm paper         */
+  --surface:   #fbf9f5;  /* raised panels: code, inputs, asides      */
+  --text:      #25231e;  /* body ink                                 */
+  --muted:     #6b675c;  /* secondary text, captions                 */
+  --border:    #dad7cd;  /* 1px rules everywhere                     */
+
+  /* Accent — the one action color (cool ink-blue) */
+  --accent:        #3a5a80;
+  --accent-hover:  #2c476b;
+  --accent-soft:   color-mix(in oklab, var(--accent) 14%, transparent);
+
+  /* Functional */
+  --visited: #6b4a8a;    /* links you've followed                    */
+  --mark:    #f4d9a070;    /* <mark> highlight                         */
+
+  /* Status — a CLOSED vocabulary (ok / caution / warning / info), mapped to
+     the EFIS/EICAS aviation convention where color carries fixed meaning:
+     green = nominal, amber = attention, red = act now, blue = advisory.
+     Applied via <data value="…"> — never decorative, no other hues. */
+  --ok:       #3f7d3f;
+  --caution:  #8a6300;
+  --warning:  #b91c1c;
+  --info:     #1f5f7a;
+
+  /* Status tints for button faces, mixed over --surface (opaque) so the face
+     reads as a tinted version of the plain button. --*-soft is the rest wash,
+     --*-strong the deeper hover wash. */
+  --ok-soft:       color-mix(in oklab, var(--ok) 14%, var(--surface));
+  --caution-soft:  color-mix(in oklab, var(--caution) 14%, var(--surface));
+  --warning-soft:  color-mix(in oklab, var(--warning) 14%, var(--surface));
+  --info-soft:     color-mix(in oklab, var(--info) 14%, var(--surface));
+  --ok-strong:      color-mix(in oklab, var(--ok) 28%, var(--surface));
+  --caution-strong: color-mix(in oklab, var(--caution) 28%, var(--surface));
+  --warning-strong: color-mix(in oklab, var(--warning) 28%, var(--surface));
+  --info-strong:    color-mix(in oklab, var(--info) 28%, var(--surface));
+
+  /* ------------------------- TYPOGRAPHY ------------------------------ */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --base:         15px;    /* body font-size                           */
+  --leading:      1.55;    /* body line-height                         */
+  --leading-head: 1.2;     /* headings line-height                     */
+  --fs-h1: 1.9rem;         /* heading scale                            */
+  --fs-h2: 1.4rem;
+  --fs-h3: 1.15rem;
+  --fs-h4: 1rem;
+  --fs-h5: 1rem;           /* h4–h6 clamp at body size (no sub-1em)    */
+  --fs-h6: 1rem;
+
+  /* Font-weight system — three deliberate weights, by role:
+     strong  = headings, strong, aria-current
+     label   = label, legend, th, data[value], summary
+     regular = body + fieldset-internal labels                        */
+  --w-strong:  650;
+  --w-label:   600;
+  --w-regular: 400;
+
+  /* ------------------------- GEOMETRY -------------------------------- */
+  /* Spacing scale — one rhythm: --s-N == N × 2px. Uniform 2px steps from
+     2px to 48px, so any spacing is reachable by index. Every spacing value
+     in bare.css derives from these. */
+  --s-1:  .125rem;   /*  2px */
+  --s-2:  .25rem;    /*  4px */
+  --s-3:  .375rem;   /*  6px */
+  --s-4:  .5rem;     /*  8px */
+  --s-5:  .625rem;   /* 10px */
+  --s-6:  .75rem;    /* 12px */
+  --s-7:  .875rem;   /* 14px */
+  --s-8:  1rem;      /* 16px */
+  --s-9:  1.125rem;  /* 18px */
+  --s-10: 1.25rem;   /* 20px */
+  --s-11: 1.375rem;  /* 22px */
+  --s-12: 1.5rem;    /* 24px */
+  --s-13: 1.625rem;  /* 26px */
+  --s-14: 1.75rem;   /* 28px */
+  --s-15: 1.875rem;  /* 30px */
+  --s-16: 2rem;      /* 32px */
+  --s-17: 2.125rem;  /* 34px */
+  --s-18: 2.25rem;   /* 36px */
+  --s-19: 2.375rem;  /* 38px */
+  --s-20: 2.5rem;    /* 40px */
+  --s-21: 2.625rem;  /* 42px */
+  --s-22: 2.75rem;   /* 44px */
+  --s-23: 2.875rem;  /* 46px */
+  --s-24: 3rem;      /* 48px */
+
+  /* Radius scale — two steps. */
+  --r-sm: 3px;    /* inline chips: code, kbd, links, focus */
+  --r:    5px;    /* controls & panels: buttons, inputs, aside, pre */
+
+  /* Layout */
+  --header-h:    3.5rem;                  /* sticky header height — anchors scroll-margin-top */
+  --measure:     50rem;                 /* content column width                           */
+  --thumb:       8rem;                 /* linkable-image thumbnail width                 */
+  --thumb-ratio: 1 / 1;                 /* gallery cell aspect ratio                      */
+  /* Feature flag — opt-in behaviors ship in bare.css behind
+     @container style(--extras: on), off by default. --extras is the
+     catch-all switch for behaviors too footgunny to ship on by default; the
+     gallery roll (ol:has(> li > a > img)) is what it currently covers. Set
+     "on" (or link extras.css, which sets it at :root) to enable the family.
+     Mode-independent, so it lives only in the light bucket. The <ul> grid
+     stays on unconditionally. */
+  --extras: off;                        /* off | on — opt-in features (link extras.css) */
+  --gutter:      clamp(1rem, 4vw, 2rem);/* page-edge padding — <header> + <main> sides (nav uses --s-4; body has none) */
+
+  /* Form fields */
+  --field:   64ch;   /* input/select/textarea max-width cap */
+  --range-w: 24rem;  /* range input max-width               */
+
+  /* Focus ring */
+  --focus-width:  3px;  /* :focus-visible outline weight */
+  --focus-offset: 2px;  /* :focus-visible outline gap    */
+
+  /* Link underline */
+  --underline-thickness: 2px;  /* text-decoration-thickness (links on hover) */
+  --underline-offset:    2px;  /* gap between text and its underline         */
+
+  /* Shadows — the CLOSED, sanctioned set (see PROJECT.md hard constraints).
+     Exactly four shadow tokens; each applies ONLY to the elements wired in
+     bare.css. Adding a shadow anywhere else, or defining a fifth, ALWAYS
+     requires explicit approval. In light mode a fixed light sits UPPER-LEFT:
+     a raised element gets a lit inner edge, a faint inner shade, and a small
+     outer cast to its lower-right; a recessed element (a pressed button, a
+     text field) gets a lit outer edge and a dark inset from its opening's
+     near wall; a bevel is a lit inner edge with a faint inner shade; and an
+     open disclosure's summary lip casts a dark line down onto the content
+     beneath it (the drawer shadow). Dark mode is retuned separately below. */
+  --btn-travel:    2px;  /* button :active downward shift — press depth    */
+  --shadow-raised:   inset 1px 1px 1px #fff, inset 1px 1px 3px #0000000d, 1px 1px 0px #00000045;        /* raised: <button> at rest, <details>                */
+  --shadow-recessed: 1px 1px 1px #fff, inset 1px 1px 0px #00000045;  /* recessed: pressed <button>, text <input>/<select>/  */
+                                                    /* <textarea>                                          */
+  --shadow-bevel:    inset 1px 1px 1px #fff, inset 1px 1px 3px #0000000d; /* light bevel: <fieldset>                             */
+  --shadow-drawer:   inset 0 1px 0px #00000060;    /* open-drawer lip: details[open] > summary + *       */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas:    #292723;
+    --bg:        #292723;
+    --surface:   #25221d;
+    --text:      #e7e3d9;
+    --muted:     #a39d91;
+    --border:    #393530;
+    --accent:        #8aabcc;
+    --accent-hover:  #a6c2dc;
+    --accent-soft:   color-mix(in oklab, var(--accent) 18%, transparent);
+    --visited: #b894e0;
+    --mark:    #5b481ed9;
+    --ok:       #7fbd72;
+    --caution:  #d9a93f;
+    --warning:  #e8635f;
+    --info:     #6cb2d6;
+
+    /* Status tints for button faces, over --surface. Rest at 18%, hover 32%. */
+    --ok-soft:       color-mix(in oklab, var(--ok) 18%, var(--surface));
+    --caution-soft:  color-mix(in oklab, var(--caution) 18%, var(--surface));
+    --warning-soft:  color-mix(in oklab, var(--warning) 18%, var(--surface));
+    --info-soft:     color-mix(in oklab, var(--info) 18%, var(--surface));
+    --ok-strong:      color-mix(in oklab, var(--ok) 32%, var(--surface));
+    --caution-strong: color-mix(in oklab, var(--caution) 32%, var(--surface));
+    --warning-strong: color-mix(in oklab, var(--warning) 32%, var(--surface));
+    --info-strong:    color-mix(in oklab, var(--info) 32%, var(--surface));
+
+    /* Shadows — retuned for dark. White edges (light mode's material) would
+       halo on the dark surface, so dark builds its edges from greys and near-
+       blacks. Raised keeps an upper-left lit grey inner edge with a dark outer
+       cast; bevel and recessed engrave the surface (dark upper-left edge,
+       lighter lower-right edge); the drawer lip darkens from the top. */
+    --shadow-bevel: inset 1px 1px 0px #1a1a1a, inset -1px -1px 0px #4c4b4b;
+    --shadow-raised: inset 1px 1px 0px #828282, 1px 1px 0px #00000073;
+    --shadow-recessed: inset -1px -1px 0px #6e6e6e, inset 1px 1px 0px #181818;
+    --shadow-drawer: inset 0 1px 0px #161616;
+  }
+}
+
+/* Responsive header height. The nav is a single-line scroller below this
+   breakpoint (1 row, ~51px) and wraps to multiple rows at/above it (2 rows,
+   ~85px). The mobile-only --fs-h3 link enlargement is reverted on desktop so
+   it can't inflate the wrapped bar. --header-h must track the taller bar so
+   scroll-margin-top keeps anchored headings clear of the sticky nav in BOTH
+   layouts. The breakpoint MUST match the nav-wrap breakpoint in bare.css
+   (48rem) or anchors drift. */
+@media (min-width: 48rem) {
+  :root { --header-h: 5.75rem; }
+}
