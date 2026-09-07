@@ -79,3 +79,7 @@ header small {
   padding: 0;
   background: transparent;
 }
+
+h1, h2, h3, h4, p {
+    color: #748E63;
+}
