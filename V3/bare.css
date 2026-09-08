@@ -1,0 +1,691 @@
+/* bare-ui — the ENGINE. A minimal stylesheet for semantic HTML5.
+   Warm paper, ink accent, flat borders, native controls.
+   No classes. No components. No JavaScript.
+
+   Consumes theme variables from theme.css (colors, type, spacing, weights).
+   Every visible value lives there; this file only wires values to elements.
+   Use:
+     <link rel="stylesheet" href="theme.css">
+     <link rel="stylesheet" href="bare.css">   then write HTML. */
+
+*, *::before, *::after { box-sizing: border-box; }
+/* The viewport backdrop (--canvas) is its own token, separate from the
+   body's --bg, so the centered body column can sit on a distinct frame; the
+   two default to the same paper. Once <html> paints its own background, the
+   body's no longer propagates up to the canvas. */
+html { -webkit-text-size-adjust: 100%; background: var(--canvas); }
+/* touch-action is not inherited, so it is applied universally. manipulation
+   kills the 300ms tap delay and double-tap-to-zoom on Chromium-based mobile.
+   iOS Safari's double-tap-zoom does NOT key off touch-action — it keys off
+   hit-testing (proven on iOS 18: every touch-action value left it firing;
+   pointer-events:none on button:disabled killed it). So touch-action does
+   not help iOS double-tap; the disabled button is handled via pointer-events
+   below. Table cells are the same zoom target but are left alone — the same
+   lever would break cell text selection (proven: long-press selected the
+   wrong cell). That trade is documented as a known limitation. */
+* { touch-action: manipulation; }
+
+/* Per-child padding model: <body> carries NO padding (no top clamp, no side
+   gutter, no bottom). Each direct child owns its own inset — <header> and
+   <main> pad with --gutter so their content lines up with the centered
+   column; <nav> pads with the smaller --s-4 (not the gutter) so the scroll
+   row keeps maximum horizontal room. Nothing breaks out via negative
+   margin; widths fall out of body's max-width + auto margins directly. */
+body {
+  margin: 0 auto;
+  max-width: var(--measure);
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--base);
+  font-weight: var(--w-regular);
+  line-height: var(--leading);
+}
+img, svg, video { max-width: 100%; height: auto; }
+/* iframe is block-level (never meant to sit inline with text) and capped to the
+   column; its height is whatever the author sets. */
+iframe { display: block; max-width: 100%; }
+/* Offset anchored sections so the sticky header doesn't cover them.
+   Derived from --header-h plus a small gap, so it stays correct if the
+   header height changes. */
+:where([id]) { scroll-margin-top: calc(var(--header-h) + var(--s-4)); }
+
+/* ── Type ── */
+h1, h2, h3, h4, h5, h6 {
+  line-height: var(--leading-head);
+  margin: var(--s-8) 0 var(--s-4);
+  font-weight: var(--w-strong);
+}
+h1 { font-size: var(--fs-h1); letter-spacing: -.02em; }
+h2 {
+  font-size: var(--fs-h2);
+  letter-spacing: -.01em;
+  padding-bottom: var(--s-4);
+  border-bottom: 1px solid var(--border);
+}
+h3 { font-size: var(--fs-h3); }
+h4 { font-size: var(--fs-h4); }
+h5 { font-size: var(--fs-h5); }
+h6 { font-size: var(--fs-h6); }
+h1, h2, h3 { text-wrap: balance; }
+:where(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+p, ul, ol, dl, blockquote, pre, table { margin: 0 0 var(--s-8); }
+ul, ol { padding-left: var(--s-10); }
+/* dt/dd: term weighted like a label, description indented to line up with the
+   other lists (--s-10, matching ul/ol). */
+dt { font-weight: var(--w-label); margin-top: var(--s-4); }
+dt:first-child { margin-top: 0; }
+dd { margin: 0 0 var(--s-4) var(--s-10); }
+dl > :last-child { margin-bottom: 0; }
+:where(p, li) { text-wrap: pretty; }
+:where(li) > ul, :where(li) > ol { margin: var(--s-2) 0 var(--s-4); }
+small { font-size: 1em; color: var(--muted); }
+strong { font-weight: var(--w-strong); }
+
+/* ── Links & action cues ── */
+a { color: var(--accent); text-underline-offset: var(--underline-offset); }
+a:hover { color: var(--accent-hover); text-decoration-thickness: var(--underline-thickness); }
+a:visited { color: var(--visited); }
+nav a:visited { color: var(--accent); }
+a[aria-current] {
+  color: var(--text);
+  font-weight: var(--w-strong);
+  text-decoration: none;
+  background: var(--accent-soft);
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--r-sm);
+}
+/* The target section gets real breathing room — background never paints
+   edge-to-edge against its content. The highlight then fades out once,
+   leaving the padding in place while the fragment is in the URL. <main> is
+   excluded so the skip-to-content link doesn't flash the whole page. */
+@keyframes target-fade {
+  from { background: var(--mark); }
+  to   { background: transparent; }
+}
+:target:not(main) {
+  background: var(--mark);
+  border-radius: var(--r-sm);
+  padding: var(--s-6) var(--s-8) var(--s-6);
+  margin-inline: calc(-1 * var(--s-6));
+  animation: target-fade 7s ease-out forwards;
+}
+:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--r-sm);
+}
+
+/* ── Header / nav ── */
+/* Skip-to-content link — the first link in <body>, targets <main id="main">.
+   Off-screen above the viewport until focused, then slides into the top-left.
+   A keyboard-only affordance; pure CSS, no class. */
+body > a[href="#main"] {
+  position: absolute;
+  top: var(--s-4);
+  left: var(--s-4);
+  z-index: 10;
+  padding: var(--s-4) var(--s-6);
+  background: var(--bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  transform: translateY(-150%);
+  transition: transform .12s ease;
+}
+body > a[href="#main"]:focus { transform: translateY(0); }
+/* Title + tagline live in <body><header> at the very top and scroll away
+   normally. The <body><nav> beneath it pins to the top on scroll and stays
+   there as the persistent chrome. Approved unfreeze of the a53b3c4 lock. */
+body > header {
+  padding: clamp(1rem, 3vw, 2rem) var(--gutter);
+}
+body > header h1 { display: inline; margin: 0; }
+body > header small { margin-inline-start: var(--s-6); }
+
+/* The sticky bar. No negative-margin breakout (body no longer pads, so the
+   bar already spans body's content box = the measure). A small --s-4
+   horizontal pad, deliberately smaller than the --gutter the header and main
+   use, so the scroll row keeps max room and the chevron/fade sit near the
+   edge. Zero vertical padding — the links fill the bar height (see below). */
+body > nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  padding: 0 var(--s-4);
+  margin-bottom: var(--s-8);
+}
+
+/* The nav is single-line on narrow viewports and wraps on wide ones.
+   Narrow (< 48rem): the <ul> is a horizontal scroller — overflow-y: hidden
+   keeps it strictly left/right (no vertical jitter, no touch capture), and
+   the most important (leftmost) links stay visible at the left; the cut-off
+   label signals that more links are there. The scrollbar is hidden so it
+   can't add height and desync --header-h.
+   Wide (>= 48rem): the <ul> wraps into a normal multi-line flex — there is
+   room for the full set of links without panning.
+   Links are real boxes (inline-flex) sized to FILL the bar height, with the
+   nav carrying no vertical padding of its own — so the whole bar is the
+   hover/click target per tab, with no dead band to "snipe" around. Mobile
+   pills are taller (the single row IS the bar); desktop pills compact
+   (padding-block --s-4) so the wrapped 2-row bar stays low. */
+nav ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  scrollbar-width: none;
+  animation: nav-nudge .4s ease-out .2s 1;
+}
+nav ul::-webkit-scrollbar { display: none; }
+/* Base (mobile) link: --fs-h3 for tap-target legibility. MOBILE-ONLY: the
+   >= 48rem query below reverts font to --base so the wider text can't force
+   the wrapped desktop bar to a 3rd row. */
+nav a {
+  align-items: center;
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  font-size: var(--fs-h3);
+  padding: var(--s-5) var(--s-4);
+  text-decoration: none;
+  white-space: nowrap;
+}
+nav a:hover { background: var(--accent-soft); text-decoration: none; }
+
+/* Scrollability cues (mobile only; both drop at >= 48rem, where the <ul>
+   wraps and there is nothing to pan):
+   - Right-edge fade + chevron. A single ::after on the bar carries a
+     gradient (transparent to --border) across a --s-24 band, plus a muted "›"
+     glyph as its content laid over it. Content paints on top of its own
+     background, so the chevron reads crisp atop the fade and points to the
+     continuation. Pinned flush to the bar's right edge (right: 0) and to the
+     bar (not the <ul>) so it holds at the cut-off while links slide beneath;
+     pointer-events: none so the link underneath stays clickable. The fade's
+     end color is --border (themed in both buckets) so it tracks light/dark.
+     It can't tell when the row reaches its end, so the cue lingers there;
+     cheap and honest enough to live with.
+   - One-shot load nudge. The <ul> shimmies right then back on load, a
+     tactile "this row moves" gesture in the spirit of button press-travel.
+     Fires once; the reduced-motion @media already disables every animation. */
+@keyframes nav-nudge {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(var(--s-12)); }
+}
+body > nav::after {
+  content: "›";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--s-24);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--s-1);
+  background: linear-gradient(to right, transparent, var(--border));
+  color: var(--muted);
+  font-size: var(--fs-h1);
+  pointer-events: none;
+}
+
+@media (min-width: 48rem) {
+  nav ul { flex-wrap: wrap; overflow: visible; animation: none; }
+  body > nav::after { display: none; }
+  /* Desktop reverts the mobile-only link enlargement: font back to --base
+     (so the wider --fs-h3 doesn't force 3 rows), plus a compact pill
+     (padding-block --s-4) so the 2-row bar stays low while each pill still
+     fills its row height. No dead band. */
+  nav a { font-size: var(--base); padding-block: var(--s-4); }
+}
+
+/* Sections breathe more than their contents: --s-24 between sections vs
+   --s-8 between blocks within a section. Margin-collapsing makes the gap
+   consistent regardless of each section's last child. */
+/* <main> pads its own sides with --gutter to align with <header>; body
+   provides none. */
+main { display: block; padding: 0 var(--gutter); }
+/* <body> > <footer> pads its own sides with --gutter like <header>/<main>,
+   so it lines up with the centered column. (Scoped to a body-direct footer so
+   a <footer> used as a citation inside a <blockquote> is left alone.) */
+body > footer { padding: 0 var(--gutter); }
+main > section { margin-bottom: var(--s-24); }
+main > section:last-child { margin-bottom: var(--s-24); }
+
+/* ── Forms — native controls, accent-colored ── */
+button, input, select, textarea { font: inherit; color: inherit; }
+button {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: var(--s-3) var(--s-5); cursor: pointer;
+  box-shadow: var(--shadow-raised);
+  transition: transform .12s ease, box-shadow .12s ease,
+              background .12s ease, border-color .12s ease, color .12s ease;
+}
+/* Hover = ready to press: the face fills with --border (the panel border grey
+   reads as "armed"). The button itself doesn't move (a real button can't lift
+   to a finger), so its cast shadow is unchanged — still the rest protrusion. */
+button:hover {
+  background: var(--border);
+}
+/* Active = pressed into the well: travels down by --btn-travel; the outer
+   shadow drops away and an inset shadow from the opening's near wall
+   darkens the top-left inner edge — same fixed light, now reading recess. */
+button:active {
+  transform: translateY(var(--btn-travel));
+  box-shadow: var(--shadow-recessed);
+}
+button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; transform: none; pointer-events: none; }
+/* Status buttons: the face takes a soft status tint over the surface and the
+   border the full status hue at rest; hover deepens the tint. Reuses the
+   CLOSED <data value> vocabulary (ok / caution / warning / info; see Status).
+   No new hues, no class. A sanctioned exception to "one button style"; the
+   shape, shadow, press travel, and disabled treatment are unchanged. */
+button[data-value="ok"]      { background: var(--ok-soft);      border-color: var(--ok); }
+button[data-value="caution"] { background: var(--caution-soft); border-color: var(--caution); }
+button[data-value="warning"] { background: var(--warning-soft); border-color: var(--warning); }
+button[data-value="info"]    { background: var(--info-soft);    border-color: var(--info); }
+button[data-value="ok"]:hover      { background: var(--ok-strong); }
+button[data-value="caution"]:hover { background: var(--caution-strong); }
+button[data-value="warning"]:hover { background: var(--warning-strong); }
+button[data-value="info"]:hover    { background: var(--info-strong); }
+/* Text inputs size to a comfortable reading width; textareas fill the column.
+   width:100% overrides intrinsic cols/size so the control always honors its
+   container, not the browser's default 20-col guess. */
+input, select, textarea {
+  background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--r);
+  padding: var(--s-4) var(--s-4); width: 100%; max-width: var(--field);
+}
+textarea { min-height: 5em; max-width: 100%; resize: vertical; font-family: inherit; }
+/* Text fields (<input>, <select>, <textarea>) read as recessed into the
+   surface (inset shadow). Native controls (checkbox/radio/range/file) keep
+   their own rendering and are excluded; adding a shadow to one requires
+   explicit approval. */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]),
+select,
+textarea { box-shadow: var(--shadow-recessed); }
+input:hover, select:hover, textarea:hover { border-color: var(--accent); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+input:disabled, select:disabled, textarea:disabled { opacity: .5; cursor: not-allowed; }
+input[type="checkbox"],
+input[type="radio"],
+input[type="range"] { accent-color: var(--accent); }
+input[type="checkbox"], input[type="radio"] {
+  width: 1.1em;
+  height: 1.1em;
+  margin-inline: 0 var(--s-4);
+  vertical-align: -.18em;
+}
+input[type="range"] { width: 100%; max-width: var(--range-w); }
+input[type="file"] { padding: var(--s-2); }
+label { display: block; font-weight: var(--w-label); margin: 0 0 var(--s-4); }
+label:has(+ :required)::after { content: " *"; color: var(--accent); }
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-bevel);
+  padding: var(--s-6);
+  margin: 0 0 var(--s-8);
+}
+fieldset > :last-child { margin-bottom: 0; }
+legend { padding-inline: var(--s-2); font-weight: var(--w-label); }
+:where(fieldset) label {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 var(--s-4) var(--s-4) 0;
+  font-weight: var(--w-regular);
+  padding: var(--s-2) var(--s-5);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-raised);
+}
+
+/* ── Indicators & media controls — progress, meter, audio. Native controls:
+   accent-colored, sized to the reading column like range, NO shadow (same
+   convention as checkbox/radio/range/file). <meter> keeps the browser's native
+   low/high/optimum range coloring drawn over the accent. */
+progress, meter { accent-color: var(--accent); width: 100%; max-width: var(--range-w); }
+audio { accent-color: var(--accent); width: 100%; max-width: var(--range-w); }
+
+/* ── Tables ── */
+table { width: 100%; border-collapse: collapse; }
+caption { text-align: left; margin-bottom: var(--s-4); color: var(--muted); }
+th, td {
+  border: 1px solid var(--border);
+  padding: var(--s-4) var(--s-6);
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--surface); font-weight: var(--w-label); }
+tbody tr:hover { background: var(--accent-soft); }
+
+/* ── Block & inline ── */
+blockquote { margin-inline: 0; padding-left: var(--s-8); font-style: italic; color: var(--muted); }
+:where(blockquote, figcaption) :is(strong, em) { color: var(--text); }
+code, kbd, samp, pre { font-family: var(--mono); }
+code { background: var(--accent-soft); padding: .12em var(--s-2); border-radius: var(--r-sm); }
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: var(--s-8);
+  overflow: auto;
+}
+pre code { background: none; padding: 0; }
+kbd {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: var(--s-1) var(--s-2);
+  box-shadow: var(--shadow-raised);
+  margin: 0 var(--s-2);
+}
+mark {
+  background: var(--mark);
+  color: var(--text);
+  padding: .05em var(--s-2);
+  border-radius: var(--r-sm);
+}
+
+/* ── Figure — image (or other media) with a caption, one self-contained panel.
+   Joins the panel consensus (border + --surface fill + --r radius) like
+   aside/pre/fieldset/details. The image is inset content (no border of its
+   own, so no box-in-a-box); caption is muted, with strong/em popping to ink. */
+figure {
+  margin: 0 0 var(--s-8);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: var(--s-8);
+}
+figure img { display: block; width: 100%; height: auto; border-radius: var(--r-sm); }
+figcaption { margin: var(--s-4) 0 0; color: var(--muted); }
+figure > :last-child { margin-bottom: 0; }
+
+/* Linked hero image — open the full-resolution source. Same structural opt-in
+   as the gallery: a direct-child <a> wrapping the <img> (figure > a:has(> img)),
+   never a class. The link reuses the established --accent-soft hover frame: a
+   thin --s-2 pad insets the image and lights up on hover, matching a gallery
+   thumbnail. Keyboard focus keeps the global :focus-visible outline. */
+figure > a:has(> img) {
+  display: block;
+  text-decoration: none;
+  padding: var(--s-2);
+  border-radius: var(--r);
+}
+figure > a:has(> img):hover { background: var(--accent-soft); }
+
+/* ── Gallery — a grid of equal-size linkable thumbnails. The semantic trigger
+   is a <ul> whose items are image-links: ul:has(> li > a > img). No class.
+   --thumb is the one knob (thumbnail width); column count emerges from it via
+   auto-fill, so the layout degrades gracefully on narrow viewports and under
+   browser zoom (no horizontal overflow, large touch targets) — the
+   accessibility-preserving choice over a fixed column count. Cells are
+   square (1:1) so they stay equal; images keep their aspect ratio and fit
+   inside via object-fit: contain (letterboxed, never cropped). */
+ul:has(> li > a > img) {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--thumb), 1fr));
+  gap: var(--s-4);
+  padding: 0;
+  margin: 0 0 var(--s-8);
+}
+ul:has(> li > a > img) li { margin: 0; }
+ul:has(> li > a > img) a {
+  display: block;
+  text-decoration: none;
+  padding: var(--s-2);
+  border-radius: var(--r);
+  aspect-ratio: var(--thumb-ratio);
+}
+ul:has(> li > a > img) img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+}
+ul:has(> li > a > img) a:hover { background: var(--accent-soft); }
+
+/* OPT-IN: the gallery roll is gated on the --extras flag (off by default in
+   theme.css). --extras is the catch-all switch for opt-in behaviors too
+   footgunny to ship on by default — the roll fires on any <ol> of
+   image-links, icon-included, so it can't be the default; the gallery roll
+   is what --extras currently covers, and future opt-ins will share it. A
+   container style query is the one clean way in pure CSS to flip a cohesive
+   block on a single variable: the roll bundles display, overflow,
+   scroll-snap, the <a> aspect-ratio, and the mobile scroll cue, so flipping
+   only display would leave the rest still distorting a plain list. Set
+   --extras: on at :root, or link extras.css, to turn the family on; the flag
+   inherits as a custom property, so opt-in can also be scoped to one subtree.
+   The selector inside is unchanged and still matches structurally
+   (ol:has(> li > a > img)) but stays inert until opted in. The <ul> grid
+   above is NOT gated and stays on unconditionally. */
+@container style(--extras: on) {
+  /* A <figure> wrapping a roll drops its panel padding so the scroll strip
+     runs flush to the figure's border instead of sitting inset. The selector
+     mirrors the roll's own structure (figure > ol > li > a > img) in a single
+     :has() — :has() can't be nested, so the ol's image-link test can't ride a
+     second :has() on the figure. */
+  figure:has(> ol > li > a > img) { padding: 0; }
+  /* ── Gallery roll — a horizontally scrollable strip of thumbnails. The
+     semantic trigger is an <ol> whose items are image-links:
+     ol:has(> li > a > img). No class. An <ol> reads as an ordered sequence, so
+     it lays out as a single row that scrolls and snaps; the <ul> grid above
+     stays an unordered set. flex, not grid: each item is fixed at --thumb and
+     the strip never wraps, it scrolls. scroll-snap-type: x mandatory snaps each
+     card to the start edge, and everything else (swipe, trackpad, keyboard
+     arrows, the scrollbar) is native, no script. Reuses the gallery's --thumb
+     cell width, square aspect, letterboxed image, and --accent-soft hover
+     frame. */
+  ol:has(> li > a > img) {
+    list-style: none;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    gap: var(--s-4);
+    padding: 0;
+    margin: 0 0 var(--s-8);
+  }
+  ol:has(> li > a > img) li {
+    margin: 0;
+    flex: 0 0 var(--thumb);
+    scroll-snap-align: start;
+  }
+  ol:has(> li > a > img) a {
+    display: block;
+    text-decoration: none;
+    padding: var(--s-2);
+    border-radius: var(--r);
+    aspect-ratio: var(--thumb-ratio);
+  }
+  ol:has(> li > a > img) img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: var(--r-sm);
+  }
+  ol:has(> li > a > img) a:hover { background: var(--accent-soft); }
+
+  /* Right-edge scroll cue (mobile only; drops at >= 48rem) — the same fade +
+     chevron as the nav bar: a ::after carries a transparent→--border gradient
+     across a --s-24 band with a muted “›” glyph laid over it, and
+     pointer-events:none so the link beneath stays clickable. The nav's cue is
+     abs-pos on the non-scrolling bar (the <ul> scrolls inside it); the roll's
+     <ol> IS the scroller, so an abs-pos overlay would scroll away with the
+     cards. Instead the cue is position: sticky; right: 0 — a zero-grow flex
+     item that stays pinned to the scrollport's right edge while the cards slide
+     beneath it, releasing only at the very end where its in-flow place is
+     already at the edge. The roll always overflows (fixed --thumb cards never
+     wrap), so the cue is honest on mobile; on desktop the visible native
+     scrollbar is the affordance instead. */
+  ol:has(> li > a > img)::after {
+    content: "›";
+    position: sticky;
+    right: 0;
+    flex: 0 0 var(--s-24);
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: var(--s-1);
+    background: linear-gradient(to right, transparent, var(--border));
+    color: var(--muted);
+    font-size: var(--fs-h1);
+    pointer-events: none;
+  }
+  /* Desktop drops the roll cue — it belongs with the nav's mobile-only band,
+     and the visible native scrollbar is the affordance on wide screens. Kept as
+     its own query here (after the base rule) so source order lets it win at
+     equal specificity. */
+  @media (min-width: 48rem) {
+    ol:has(> li > a > img)::after { display: none; }
+  }
+}
+
+/* ── Status: <data value="…"> — semantic machine-readable values, colored
+   by meaning per the EFIS/EICAS convention. Color is the signal (like an
+   EFIS readout), no chip background. Closed vocabulary: ok / caution /
+   warning / info. Works inline or inside an <aside>. */
+data[value] { font-weight: var(--w-label); }
+data[value="ok"]      { color: var(--ok); }
+data[value="caution"] { color: var(--caution); }
+data[value="warning"] { color: var(--warning); }
+data[value="info"]    { color: var(--info); }
+
+hr { border: 0; border-top: 1px solid var(--border); margin: var(--s-12) 0; }
+
+/* ── Aside — neutral by default; lead with a <data value> chip inside to
+   flag status without a separate callout component. */
+aside {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: var(--s-6) var(--s-8);
+  margin: 0 0 var(--s-8);
+}
+aside > :last-child { margin-bottom: 0; }
+
+/* ── Disclosure ── */
+/* A <details> is a panel: bordered whether open or closed, so the widget is
+   always visible AND the open content has a clear boundary (the actual bug —
+   when open, where it ended was invisible, so the next paragraph looked like
+   it belonged to the disclosure). Open: summary becomes a header bar with a
+   rule beneath it and the panel fills with the surface tint. Carries the
+   raised shadow (like a button at rest), so the panel sits slightly proud of
+   the page — distinct from the beveled fieldset/th/td panels. */
+details {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  box-shadow: var(--shadow-raised);
+  margin: 0 0 var(--s-8);
+}
+summary { cursor: pointer; font-weight: var(--w-label); padding: var(--s-4) var(--s-6); }
+details[open] { background: inherit; }
+details[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+details[open] > summary ~ * { padding-inline: var(--s-6); }
+details[open] > *:last-child {
+  background: var(--surface);
+  margin-bottom: 0;
+  padding-bottom: var(--s-6);
+}
+/* The element right after the summary is the drawer's content (summary + * —
+   exactly one adjacent sibling). padding-top recreates the gap the summary's
+   former margin-bottom provided, for ANY tag (not just <pre>); and the
+   open-drawer shadow casts the summary lip down onto the content beneath it. */
+details[open] > summary + * {
+  padding-top: var(--s-6);
+  box-shadow: var(--shadow-drawer);
+}
+/* A <pre> directly inside an open disclosure drops its own panel decorations
+   (border, surface fill, top corners) so it does not double-panel against the
+   disclosure. The background drop is load-bearing only when the pre is NOT the
+   last content child: details[open] > *:last-child re-applies the surface fill
+   at higher specificity, so when the pre IS the last child it reads as the
+   filled drawer. Squaring the top two corners lets the drawer shadow sit as a
+   clean straight line under the summary bar's rule. That shadow comes from
+   details[open] > summary + *. */
+details[open] > pre {
+  background: none; border: 0;
+  border-top-left-radius: 0; border-top-right-radius: 0;
+}
+/* A list directly inside an open disclosure needs its bullet room defended:
+   details[open] > summary ~ * sets padding-inline (the logical shorthand for
+   padding-inline-start/end), which would collapse ul/ol's marker indent
+   (--s-10) down to --s-6 and cram the bullets into the panel's left border.
+   Contest it on the SAME axis — the physical `padding` shorthand only resets
+   the four physical longhands, so padding-left/right here would NOT override a
+   logical padding-inline. Two values: start --s-10 (bullet room), end --s-6
+   (matches the rest of the drawer's inset). Source order wins the tie at (0,1,2). */
+details[open] > ul,
+details[open] > ol {
+  padding-inline: var(--s-10) var(--s-6);
+}
+/* A figure inside an open disclosure drops its own --s-8 panel padding so the
+   image/media bleeds edge-to-edge to the figure's frame; the caption then
+   carries the inset instead (--s-8 all around its text). Descendant combinator,
+   not child: in real markup the figure is usually nested (details > ul > li >
+   figure), so `details[open] > figure` would miss it. For a nested figure the
+   drawer padding rules never apply (they target direct children of details),
+   so the only contest is the base `figure` rule, which `padding: 0` wins. For
+   the rarer direct-child figure (the drawer's own content) two extra contests
+   kick in: summary ~ * sets padding-inline: --s-6 (a logical longhand the
+   physical `padding: 0` does NOT reset, so padding-inline: 0 is set
+   explicitly), and *:last-child sets padding-bottom: --s-6 — the :last-child
+   variant (0,2,2) outranks it so the bottom zeroes too. */
+details[open] figure,
+details[open] figure:last-child {
+  padding: 0;
+  padding-inline: 0;
+}
+details[open] figure > figcaption {
+  padding: var(--s-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ── Print — the page becomes a document. Hide interactive chrome (nav,
+   skip link), drop shadows and tinted backgrounds (ink only), surface the
+   destination of external links, and keep panels from splitting across
+   pages. Closed <details> stay closed on print — force-expanding them
+   needs JS, which is out of scope. */
+@media print {
+  body > nav,
+  body > a[href="#main"] { display: none; }
+
+  * { box-shadow: none !important; }
+
+  html, body { background: transparent; }
+  body { color: var(--text); }
+  pre, code, kbd, samp, mark,
+  aside, figure, fieldset, details[open] > *:last-child,
+  input, select, textarea, th { background: transparent; }
+  :target { background: transparent; animation: none; }
+  a[aria-current] { background: transparent; }
+
+  /* Show the destination of external links inline. */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  /* mark loses its tinted background on print; underline preserves it. */
+  mark { text-decoration: underline; }
+
+  /* Keep panels and rows from splitting across pages. */
+  pre, blockquote, figure, table, tr, details { break-inside: avoid; }
+}

@@ -1,0 +1,96 @@
+/* site.css — local override, linked after bare.css.
+   Exo 2 is used only in the site header: Bold for the title, Regular for
+   the tagline. Everything else keeps bare-ui's system font. */
+
+@font-face {
+  font-family: "Exo 2";
+  src: url("fonts/static/Exo2-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Exo 2";
+  src: url("fonts/static/Exo2-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+header h1 {
+  font-family: "Exo 2", var(--font);
+  font-weight: 700;
+}
+
+header small {
+  font-family: "Exo 2", var(--font);
+  font-weight: 400;
+}
+
+/* Trip cards: every trip is a panel <article> with a row of action
+   buttons (Video / Gallery / Map, whichever apply). No classes — scoped
+   to #trips, so the map figure is unaffected. */
+#trips article {
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: var(--s-8);
+  margin: 0 0 var(--s-8);
+}
+#trips article > :last-child { margin-bottom: 0; }
+#trips article img {
+  border-radius: var(--r-sm);
+  margin: 0 0 var(--s-4);
+}
+#trips article p { margin: 0 0 var(--s-2); }
+#trips article ul {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding: 0;
+  margin: var(--s-4) 0 0;
+}
+#trips article ul a {
+  display: inline-block;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: var(--s-3) var(--s-5);
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-raised);
+  transition: transform .12s ease, box-shadow .12s ease,
+              background .12s ease, border-color .12s ease, color .12s ease;
+}
+#trips article ul a:hover {
+  background: var(--border);
+}
+#trips article ul a:active {
+  transform: translateY(var(--btn-travel));
+  box-shadow: var(--shadow-recessed);
+}
+
+/* The map figure sits flush: no panel padding or fill. */
+#map figure {
+  padding: 0;
+  background: transparent;
+}
+
+h1, h2, h3, h4, p {
+    color: #748E63;
+}
+
+.youtube-ctrl{
+    width: 350px;
+    height:390px;
+    float:right;
+}
+.ggl-album{
+    float:left;
+    width:350px;
+    height: 390px;
+}
+    .ggl-album img {
+        clip: rect(0, 350px, 390px, 0);
+    }
