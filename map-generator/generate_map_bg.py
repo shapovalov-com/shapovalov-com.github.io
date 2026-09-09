@@ -685,13 +685,10 @@ def main() -> int:
         f"--visited:{P['vis_fill'][0]};--visited-edge:{P['vis_stroke'][0]};",
         f"--dot:{m['fill'][0]};--dot-ring:{m['ring'][0]};"
         f"--label:{P['label']['fill'][0]};--leader:{m['ring'][0]};",
-        f"--dot-r:{dot_r};"
         f"--stroke-coast:{STROKE_COAST};--stroke-state:{STROKE_STATE};"
         f"--stroke-visited:{STROKE_VISITED};--stroke-leader:{STROKE_LEADER};"
         f"--stroke-ring:{STROKE_RING}",
         "}",
-        # Radius overrides: CSS geometry keeps the r attributes as fallback.
-        f".dot{{r:var(--dot-r)}}.ring{{r:calc(var(--dot-r) * {RING_FACTOR})}}",
         ".legend{font-family:ui-sans-serif,system-ui,-apple-system,"
         "Segoe UI,Roboto,sans-serif}",
     ]

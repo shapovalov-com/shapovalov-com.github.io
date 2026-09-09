@@ -156,8 +156,9 @@ by `map-generator/`:
   (plain JSON, whitespace-insensitive keys, can rename even the city names).
 - Colours and line weights are CSS custom properties on `:root` inside the
   SVG (`--land`, `--coast`, `--visited`, `--dot`, `--label`, `--stroke-*`,
-  `--dot-r`, ...): one block to restyle; the generator-side defaults live
-  in `PALETTES` and the `STROKE_*` constants.
+  ...): one block to restyle; the generator-side defaults live in
+  `PALETTES` and the `STROKE_*` constants. Marker radii and legend
+  font/pitch stay generator-side (see the map-generator README).
 - One file, two layouts: below 1000px image width an internal media query
   hides the legend columns and scales the map strip to the full canvas
   width (phones see the bare strip, centred, filling the image width).

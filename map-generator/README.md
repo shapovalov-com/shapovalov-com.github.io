@@ -70,13 +70,15 @@ re-run to change future renders (a re-render overwrites manual SVG edits).
 Colours: `--land`, `--coast`, `--state`, `--visited`, `--visited-edge`,
 `--dot`, `--dot-ring`, `--label`, `--leader`.
 Sizes (CSS px, rendered non-scaling): `--stroke-coast`, `--stroke-state`,
-`--stroke-visited`, `--stroke-leader`, `--stroke-ring`; the city dot radius
-is `--dot-r` (the ring derives from it).
+`--stroke-visited`, `--stroke-leader`, `--stroke-ring`.
 
-What deliberately stays in the script: the legend font size, row pitch, and
-column widths. They define the canvas geometry, so changing them means
-re-deriving the layout; they live as named constants (`LEGEND_*`,
-`FONT_MAX_DIV`, `H_CAP_FACTOR`) at the top of `generate_map_bg.py`.
+The dot and ring radii deliberately stay numeric in the generator (the
+palette's marker `r` or `--dot-size`): geometry attributes like `r` are not
+CSS-cascaded in every engine (`var()` in `r` silently drops the dots in
+Firefox), unlike colours and stroke widths. The same applies to the legend
+font size, row pitch, and column widths, which define the canvas geometry;
+they live as named constants (`LEGEND_*`, `FONT_MAX_DIV`, `H_CAP_FACTOR`)
+at the top of `generate_map_bg.py`.
 
 ## Responsive behaviour (one file, two layouts)
 
