@@ -181,9 +181,9 @@ def main() -> int:
                     help="label visited countries (Natural Earth anchors, "
                          "decluttered by LABELRANK)")
     ap.add_argument("--label-leaders", action="store_true",
-                    help="with --labels: keep every label by displacing crowded "
-                         "ones and drawing a leader line to the country "
-                         "(instead of omitting overlaps)")
+                    help="with --labels: nudge crowded labels aside and draw a "
+                         "short leader line to the country; a label with no "
+                         "clean spot nearby is omitted")
     ap.add_argument("--label-opacity", type=float, default=None,
                     help="absolute opacity (0–1) of country labels; overrides "
                          "--opacity; default uses the palette")
@@ -373,16 +373,44 @@ def main() -> int:
                 x, y = equal_earth(lx, ly)
                 cands.append((rank, x, y, name))
         cands.sort(key=lambda c: (c[0], c[1]))
+        # Box half-extents: char_w approximates the per-glyph half-advance, so
+        # len(name) * char_w is the half-width of the rendered text.
         char_w, line_h, gap = LSIZE * 0.28, LSIZE * 0.35, LSIZE * 0.15
 
         def overlaps(x, y, hw, hh, placed):
             return any(abs(x - px) < (hw + phw + gap) and abs(y - py) < (hh + phh + gap)
                        for px, py, phw, phh in placed)
 
+        def leader_hits_text(ax, ay, lx, ly, placed):
+            """True if the anchor->label segment strikes the text of an
+            already-placed label (its box shrunk to roughly the glyphs, since
+            a leader grazing a box edge is fine but crossing text is not)."""
+            for px, py, phw, phh in placed:
+                xmin, xmax = px - phw * 0.7, px + phw * 0.7
+                ymin, ymax = py - phh * 0.7, py + phh * 0.7
+                dx, dy = lx - ax, ly - ay
+                t0, t1 = 0.0, 1.0
+                for d, q, lo, hi in ((dx, ax, xmin, xmax), (dy, ay, ymin, ymax)):
+                    if abs(d) < 1e-12:
+                        if q < lo or q > hi:
+                            t0, t1 = 1.0, 0.0
+                            break
+                    else:
+                        ta, tb = (lo - q) / d, (hi - q) / d
+                        if ta > tb:
+                            ta, tb = tb, ta
+                        t0, t1 = max(t0, ta), min(t1, tb)
+                if t0 <= t1:
+                    return True
+            return False
+
         placed = []  # (x, y, hw, hh) of label boxes already placed
         if args.label_leaders:
-            # Keep every label: try the anchor, then spiral outward to a free spot.
-            step, max_r = LSIZE * 0.9, LSIZE * 9.0
+            # Try the anchor, then spiral outward for a free spot nearby. A
+            # leader must stay short and may not cross another label's text;
+            # a label with no clean spot within max_r is dropped rather than
+            # flung far from its country by a long stray line.
+            step, max_r = LSIZE * 0.45, LSIZE * 3.0
             for rank, ax, ay, name in cands:
                 hw, hh = len(name) * char_w, line_h
                 lx, ly = ax, ay
@@ -390,15 +418,19 @@ def main() -> int:
                     found, r = False, step
                     while r <= max_r and not found:
                         n = max(8, int(2 * math.pi * r / step))
+                        # stagger alternate rings so candidates don't retrace
+                        off = 0.5 / n if int(round(r / step)) % 2 else 0.0
                         for i in range(n):
-                            ang = 2 * math.pi * i / n
+                            ang = 2 * math.pi * (i + off) / n
                             cx, cy = ax + r * math.cos(ang), ay + r * math.sin(ang)
-                            if not overlaps(cx, cy, hw, hh, placed):
+                            if not overlaps(cx, cy, hw, hh, placed) and \
+                               not leader_hits_text(ax, ay, cx, cy, placed):
                                 lx, ly, found = cx, cy, True
                                 break
                         r += step
                     if not found:
-                        lx, ly = ax + max_r, ay  # least-bad fallback (keeps label)
+                        print(f"  dropping boxed-in label: {name}")
+                        continue
                 placed.append((lx, ly, hw, hh))
                 LABELS.append((ax, ay, lx, ly, rank, name))
         else:

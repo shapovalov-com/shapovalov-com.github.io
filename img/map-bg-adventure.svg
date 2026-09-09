@@ -509,11 +509,9 @@
 <text class="label lr2" x="0.930" y="0.914" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Mexico</text>
 <text class="label lr2" x="1.254" y="0.299" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Canada</text>
 <text class="label lr2" x="2.294" y="0.624" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Portugal</text>
-<line x1="2.358" y1="0.615" x2="2.358" y2="0.575" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr2" x="2.358" y="0.575" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Spain</text>
 <text class="label lr2" x="2.437" y="0.503" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">France</text>
-<line x1="2.547" y1="0.536" x2="2.588" y2="0.536" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr2" x="2.588" y="0.536" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Italy</text>
+<line x1="2.547" y1="0.536" x2="2.534" y2="0.551" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<text class="label lr2" x="2.534" y="0.551" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Italy</text>
 <text class="label lr2" x="2.919" y="0.327" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Russia</text>
 <text class="label lr3" x="2.020" y="0.144" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Greenland</text>
 <text class="label lr3" x="2.203" y="0.242" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Iceland</text>
@@ -521,25 +519,21 @@
 <text class="label lr3" x="2.513" y="0.285" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Norway</text>
 <text class="label lr3" x="2.607" y="0.229" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Sweden</text>
 <text class="label lr3" x="2.642" y="0.419" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Poland</text>
-<line x1="2.804" y1="0.454" x2="2.844" y2="0.454" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr3" x="2.844" y="0.454" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Ukraine</text>
+<line x1="2.804" y1="0.454" x2="2.824" y2="0.453" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<text class="label lr3" x="2.824" y="0.453" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Ukraine</text>
 <text class="label lr4" x="1.269" y="1.027" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Jamaica</text>
 <text class="label lr4" x="2.511" y="0.360" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Denmark</text>
 <line x1="2.583" y1="0.490" x2="2.624" y2="0.490" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <text class="label lr4" x="2.624" y="0.490" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Austria</text>
-<line x1="2.746" y1="0.391" x2="2.746" y2="0.351" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr4" x="2.746" y="0.351" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Belarus</text>
+<line x1="2.746" y1="0.391" x2="2.759" y2="0.376" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<text class="label lr4" x="2.759" y="0.376" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Belarus</text>
 <text class="label lr5" x="1.140" y="1.136" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Nicaragua</text>
 <text class="label lr5" x="1.149" y="1.188" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Costa Rica</text>
-<line x1="1.370" y1="1.008" x2="1.399" y2="0.980" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr5" x="1.399" y="0.980" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Dominican Rep.</text>
+<line x1="1.370" y1="1.008" x2="1.369" y2="0.988" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<text class="label lr5" x="1.369" y="0.988" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Dominican Rep.</text>
 <line x1="1.429" y1="1.025" x2="1.429" y2="1.066" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <text class="label lr5" x="1.429" y="1.066" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Puerto Rico</text>
-<line x1="2.595" y1="0.452" x2="2.526" y2="0.598" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr5" x="2.526" y="0.598" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Czechia</text>
-<line x1="2.690" y1="0.372" x2="2.808" y2="0.261" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr5" x="2.808" y="0.261" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Lithuania</text>
-<line x1="2.701" y1="0.344" x2="2.701" y2="0.303" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<text class="label lr5" x="2.701" y="0.303" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Latvia</text>
+<line x1="2.690" y1="0.372" x2="2.720" y2="0.319" stroke="#4E220F" stroke-opacity="0.46" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<text class="label lr5" x="2.720" y="0.319" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Lithuania</text>
 <text class="label lr5" x="2.980" y="0.584" font-size="0.045" fill="#4E220F" fill-opacity="0.92" stroke="#F7F1DE" stroke-width="0.0135" stroke-opacity="0.85" paint-order="stroke" text-anchor="middle" dominant-baseline="central">Georgia</text>
 </g></svg>
