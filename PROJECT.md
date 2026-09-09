@@ -164,8 +164,8 @@ by `map-generator/`:
   width (phones see the bare strip, centred, filling the image width).
   The SVG scales with "meet", so opening it full-size fits the window
   without ever cropping labels. The figure fills the content column like
-  every other figure; when the canvas aspect changes after a re-render,
-  update the `width`/`height` attributes on the `<img>` in `index.html`.
+  every other figure; the `<img>` takes its aspect ratio from the SVG's
+  viewBox (no dimensions hardcoded in `index.html`).
 - Workflow after visiting somewhere new: re-export the KML from Google My Maps
   over `map-data/map.kml`, run `./map-generator/update-map.sh`, commit the
   regenerated `img/map-bg-adventure.svg`.

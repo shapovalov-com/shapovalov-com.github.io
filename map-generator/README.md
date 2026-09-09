@@ -88,8 +88,9 @@ the map strip to the full canvas width, so phones see the bare strip,
 centred, filling the image. The SVG scales with `preserveAspectRatio="meet"`:
 opening it full-size fits the window, letterboxed, never cropping labels.
 On the site the figure simply fills the content column (50rem); the label
-font is sized for that width. Keep the `width`/`height` attributes on the
-`<img>` in `index.html` in sync with the generated canvas aspect.
+font is sized for that width. The `<img>` carries no width/height
+attributes: it takes its aspect ratio from the SVG's viewBox, so re-rendering
+the map never leaves stale dimensions behind in `index.html`.
 
 ## What it runs
 
