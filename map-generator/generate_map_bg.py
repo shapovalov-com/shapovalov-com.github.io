@@ -654,12 +654,10 @@ def main() -> int:
     def dot_pos(cx, cy):
         return ox + (cx - minx), oy + (maxy - cy)
 
-    attr_w = 1200
-    attr_h = round(attr_w * height / width)
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{attr_w}" height="{attr_h}" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
         f'viewBox="0 0 {width:.3f} {height:.3f}" '
-        f'preserveAspectRatio="xMidYMid slice" role="img" '
+        f'preserveAspectRatio="xMidYMid meet" role="img" '
         f'aria-label="World map with visited regions highlighted and '
         f'{"labelled city dots" if args.legend else "city dots"}">',
         '<title>Visited places</title>',

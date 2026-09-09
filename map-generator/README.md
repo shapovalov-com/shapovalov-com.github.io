@@ -71,11 +71,12 @@ block in the SVG to recolour, or edit `PALETTES` in the script and re-run.
 
 Below `--legend-breakpoint` (1000px of the rendered image width) a media
 query inside the SVG hides the legend columns and leader lines and scales
-the map strip to full width. The site pairs this in `site.css`: below a
-1100px viewport the `<img>` is pinned to the strip's aspect (3.12:1, keep in
-sync with the generated strip viewBox), above it the figure breaks out to
-~1200px so the legend text is readable. Phones get the bare map; desktop
-gets the full legend layout.
+the map strip to the full canvas width, so phones see the bare strip,
+centred, filling the image. The SVG scales with `preserveAspectRatio="meet"`:
+opening it full-size fits the window, letterboxed, never cropping labels.
+On the site, `site.css` breaks the figure out to ~1200px on wide viewports
+so the legend text is readable; keep the `width`/`height` attributes on the
+`<img>` in `index.html` in sync with the generated canvas aspect.
 
 ## What it runs
 

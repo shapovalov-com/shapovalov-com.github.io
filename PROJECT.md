@@ -157,12 +157,13 @@ by `map-generator/`:
 - Colours are CSS custom properties on `:root` inside the SVG (`--land`,
   `--coast`, `--visited`, `--dot`, `--label`, ...): one block to recolour.
 - One file, two layouts: below 1000px image width an internal media query
-  hides the legends and scales the strip to full width (phones);
-  `site.css` pairs this by pinning the `<img>` to the strip aspect (3.12:1)
-  under a 1100px viewport and breaking the figure out to ~1200px above it.
-  When the visited region grows enough to change the strip aspect, update
-  the `aspect-ratio` in `site.css` (and the `width`/`height` attrs on the
-  `<img>` in `index.html`) to match the regenerated viewBox.
+  hides the legend columns and scales the map strip to the full canvas
+  width (phones see the bare strip, centred, filling the image width).
+  The SVG scales with "meet", so opening it full-size fits the window
+  without ever cropping labels. `site.css` breaks the figure out to
+  ~1200px on wide viewports so the legend text is readable; when the
+  canvas aspect changes after a re-render, update the `width`/`height`
+  attributes on the `<img>` in `index.html`.
 - Workflow after visiting somewhere new: re-export the KML from Google My Maps
   over `map-data/map.kml`, run `./map-generator/update-map.sh`, commit the
   regenerated `img/map-bg-adventure.svg`.
@@ -200,9 +201,8 @@ by `map-generator/`:
   Fetch thumbnails manually until then.
 - `site.webmanifest` hardcodes white `theme_color` / `background_color`, which
   does not match the paper palette in dark mode.
-- Opening the map SVG full-screen shows it at its intrinsic size (1200px
-  wide, scrollable), not stretched to the window; the responsive legend
-  layout targets the embedded `<img>`.
+- Opening the map SVG full-screen scales it to fit the window (letterboxed,
+  never cropped); the responsive legend layout targets the embedded `<img>`.
 
 ## Conventions
 
