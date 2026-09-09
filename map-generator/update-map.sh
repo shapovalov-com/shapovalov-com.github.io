@@ -20,10 +20,9 @@ LIVE_FLAGS=(
     --visited-opacity 0.3
     --land-opacity 0.2
     --dot-opacity 1
-    --dot-size 0.004
+    --dot-size 0.011
     --crop-visited
-    --labels
-    --label-leaders
+    --cluster-km 100
 )
 
 python3 "$here/generate_map_bg.py" "${LIVE_FLAGS[@]}"

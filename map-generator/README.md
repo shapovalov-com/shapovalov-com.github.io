@@ -1,7 +1,10 @@
 # map-generator
 
-Produces `img/map-bg-adventure.svg` — the Equal-Earth world map with the
-family's visited countries and US states tinted — that `index.html` embeds.
+Produces `img/map-bg-adventure.svg` — the Equal-Earth world map embedded in
+`index.html`: visited countries and US states tinted, one dot per visited
+city, and the city names in two legend columns flanking the map, each tied to
+its dot by a 1px leader line. Labels stack top-to-bottom in dot-latitude
+order, so leader lines on the same side never cross.
 
 ## One-click update
 
@@ -17,12 +20,12 @@ After it runs, commit the result:
 ```sh
 git add img/map-bg-adventure.svg
 git commit -m "chore(map): regenerate map background"
-git push origin main
+git push origin static-map
 ```
 
 ## Prerequisites — already in place
 
-Everything the generator needs is already checked into this directory, so the
+Everything the generator needs is checked into this directory, so the
 one-click works offline out of the box:
 
 | Input | Location | Refresh when |
@@ -30,29 +33,62 @@ one-click works offline out of the box:
 | Visited points (KML export from Google My Maps) | `map-data/map.kml` | the master map changes — re-export and overwrite this file |
 | Natural Earth country boundaries (cached) | `map-data/ne_110m_countries.geojson` | rarely; delete to force a re-download |
 | Natural Earth US-state boundaries (cached) | `map-data/ne_110m_states.geojson` | rarely; delete to force a re-download |
+| Natural Earth populated places (cached) | `map-data/ne_110m_populated_places_simple.geojson` | rarely; delete to force a re-download |
+| City label overrides (optional, human-edited) | `map-data/label-overrides.json` | whenever a generated label reads wrong |
 
 The only manual step in the whole flow is re-exporting `map-data/map.kml` from
-Google My Maps when you add a new destination. `update-map.sh` then handles the
-rest.
+Google My Maps when you add a new destination. `update-map.sh` then handles
+the rest.
+
+## How city labels are chosen
+
+1. Visited points closer than `--cluster-km` (100 km live) merge into one
+   city dot. The visited-region tints still use every original point.
+2. A cluster is named after the biggest Natural Earth populated place within
+   40 km of any member point, so a guesthouse outside Prague still reads
+   "Prague" and six Camino stages collapse to one dot.
+3. If no such city exists (resorts, rural places), the member names are
+   cleaned ("Sámara, Costa Rica" -> "Sámara") and the most common name wins;
+   ties go to the shortest.
+4. `label-overrides.json` has the final say. It can rename raw KML names
+   (keys match with any whitespace, so plain spaces are fine) and even
+   Natural Earth city names (`"København": "Copenhagen"`). Plain JSON, one
+   line per rename; a syntax error stops the run with the exact problem.
+
+## Colours
+
+All colours are emitted as CSS custom properties on `:root` in one `<style>`
+block at the top of the SVG: `--land`, `--coast`, `--state`, `--visited`,
+`--visited-edge`, `--dot`, `--dot-ring`, `--label`, `--leader`. Edit the
+block in the SVG to recolour, or edit `PALETTES` in the script and re-run.
+
+## Responsive behaviour (one file, two layouts)
+
+Below `--legend-breakpoint` (1000px of the rendered image width) a media
+query inside the SVG hides the legend columns and leader lines and scales
+the map strip to full width. The site pairs this in `site.css`: below a
+1100px viewport the `<img>` is pinned to the strip's aspect (3.12:1, keep in
+sync with the generated strip viewBox), above it the figure breaks out to
+~1200px so the legend text is readable. Phones get the bare map; desktop
+gets the full legend layout.
 
 ## What it runs
 
 `update-map.sh` is a thin wrapper around the exact command that produces the
-current live map:
+current live map; the flags (and only the flags) live in its `LIVE_FLAGS`:
 
 ```sh
 python3 map-generator/generate_map_bg.py \
     --palette adventure \
     --visited-opacity 0.3 --land-opacity 0.2 \
-    --dot-opacity 1 --dot-size 0.004 \
-    --crop-visited --labels --label-leaders
+    --dot-opacity 1 --dot-size 0.011 \
+    --crop-visited \
+    --cluster-km 100
 ```
 
-The flags (and only the flags) live in `update-map.sh`'s `LIVE_FLAGS`, so to
-tweak the map you edit one place and re-run. See
-`python3 map-generator/generate_map_bg.py --help` for every available knob, and
-the project-level [`GENERATORS.md`](../GENERATORS.md) for the full design notes
-(projection, palettes, point-in-polygon + coastal rescue, label decluttering).
+See `python3 map-generator/generate_map_bg.py --help` for every knob
+(clustering, legend breakpoint, overrides path, `--no-legend`, dot sizing,
+opacities, padding).
 
 ## Files
 
@@ -62,6 +98,8 @@ map-generator/
 ├── update-map.sh          # one-click wrapper -> img/map-bg-adventure.svg
 └── map-data/
     ├── map.kml                       # visited points (Google My Maps export)
+    ├── label-overrides.json          # optional label renames (human-edited)
     ├── ne_110m_countries.geojson     # cached country boundaries
-    └── ne_110m_states.geojson        # cached US-state boundaries
+    ├── ne_110m_states.geojson        # cached US-state boundaries
+    └── ne_110m_populated_places_simple.geojson  # cached city names/populations
 ```

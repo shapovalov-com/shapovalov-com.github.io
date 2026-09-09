@@ -79,3 +79,23 @@ header small {
   padding: 0;
   background: transparent;
 }
+
+/* Map display. The SVG carries two layouts in one file, switched by its
+   internal 1000px media query: wide images show the legend columns, narrow
+   ones show only the map strip. Wide viewports break the figure out of the
+   50rem column so legend text is comfortable; narrower viewports pin the
+   <img> to the strip's aspect (viewBox 4.474 x 1.436 -> 3.12:1) and the SVG
+   center-crops to the strip. Keep the aspect in sync when the visited
+   region grows; see map-generator/README.md. */
+@media (min-width: 1100px) {
+  #map figure {
+    width: min(1200px, calc(100vw - 2 * var(--gutter)));
+    margin-inline: calc(50% - min(1200px, calc(100vw - 2 * var(--gutter))) / 2);
+  }
+}
+
+@media (max-width: 1099px) {
+  #map figure img {
+    aspect-ratio: 3.12 / 1;
+  }
+}

@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
-"""Generate map-bg.svg: a very faint Equal-Earth world map background where the
-countries (and US states) the Shapovalov family has actually visited are tinted.
+"""Generate map-bg-adventure.svg: an Equal-Earth world map where the countries
+(and US states) the Shapovalov family has visited are tinted, with one dot per
+visited city and the city names laid out as two legend columns flanking the
+map. Each label is tied to its dot by a 1px leader line.
 
-Factual source:
-  - map-data/map.kml  -> 133 visited points (lon, lat).
+Layout: [left legend][map strip][right legend]
+  - The strip is cropped to the visited region (as before).
+  - Points closer than --cluster-km merge into one city dot/label.
+  - Labels stack top-to-bottom in dot-latitude order on each side, so
+    same-side leader lines never cross.
+  - Colours are emitted as CSS custom properties on :root (edit them in one
+    place to recolour the whole map).
+  - Phones (image box <= the media breakpoint) hide the legends and scale the
+    strip to full width via a baked CSS transform. The site pairs this with an
+    aspect-ratio rule on the <img> in site.css (see PROJECT.md).
+
+Factual sources:
+  - map-data/map.kml                    -> visited points (lon, lat, name).
+  - map-data/label-overrides.json       -> optional {"raw KML name": "label"}.
 Boundaries (public domain, Natural Earth 1:110m, fetched once and cached):
   - ne_110m_admin_0_countries.geojson        (country polygons)
   - ne_110m_admin_1_states_provinces.geojson (US state polygons)
+  - ne_110m_populated_places_simple.geojson  (city names/populations)
 
 A point is "visited" via ray-cast point-in-polygon against the boundaries. Points
 that fall just outside a coarse coastline (real coastal towns) are rescued to
@@ -14,8 +29,7 @@ their single nearest polygon within a small tolerance, so the highlight is deriv
 directly from the KML with no manual country lists and no border double-counting.
 
 Projection: spherical Equal Earth (formulas from PROJ, the reference impl).
-Output: img/map-bg.svg, transparent background, faint gray land with
-a subtle blue tint on visited regions. Use it as a CSS background-image.
+Output: img/map-bg-*.svg, transparent background. Python 3.10+, stdlib only.
 """
 import argparse
 import html
@@ -30,45 +44,52 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO = SCRIPT_DIR.parent
 KML = SCRIPT_DIR / "map-data" / "map.kml"
 CACHE = SCRIPT_DIR / "map-data"
+OVERRIDES = CACHE / "label-overrides.json"
 
 COUNTRIES_URL = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/"
                  "master/geojson/ne_110m_admin_0_countries.geojson")
 STATES_URL = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/"
               "master/geojson/ne_110m_admin_1_states_provinces.geojson")
+POP_URL = ("https://raw.githubusercontent.com/nvkelso/natural-earth-vector/"
+           "master/geojson/ne_110m_populated_places_simple.geojson")
 
 # Equal Earth spherical forward (PROJ reference coefficients).
 A1, A2, A3, A4 = 1.340264, -0.081106, 0.000893, 0.003796
 M = math.sqrt(3.0) / 2.0
 
-# Named colour palettes -> (hex, opacity) per map role.
-#   land_fill   : base tint of every landmass (keep faint).
-#   land_stroke : coastline / country outline.
-#   state_stroke: faint US-state dividers.
-#   vis_fill    : fill of visited regions.
-#   vis_stroke  : outline of visited regions.
+# Named colour palettes -> (hex, opacity) per map role. The hex values are
+# emitted as CSS custom properties on :root inside the SVG; edit them there
+# (or here + re-run) to recolour.
 PALETTES = {
     "default": {
-        "land_fill":   ("#6b675c", 0.05),   # --muted
-        "land_stroke": ("#6b675c", 0.16),
-        "state_stroke":("#6b675c", 0.10),
-        "vis_fill":    ("#3a5a80", 0.16),  # --accent (cool ink-blue)
-        "vis_stroke":  ("#3a5a80", 0.30),
-        # marker: solid dot + soft halo
-        "marker": {"fill": ("#3a5a80", 0.95), "halo": ("#ffffff", 0.30), "r": 0.010},
-        "label": {"fill": ("#25231e", 0.92), "halo": ("#ffffff", 0.75), "size": 0.045},
+        "land_fill":    ("#6b675c", 0.05),   # --muted
+        "land_stroke":  ("#6b675c", 0.16),
+        "state_stroke": ("#6b675c", 0.10),
+        "vis_fill":     ("#3a5a80", 0.16),  # --accent (cool ink-blue)
+        "vis_stroke":   ("#3a5a80", 0.30),
+        "marker": {"fill": ("#3a5a80", 0.95), "ring": ("#25231e", 0.80), "r": 0.010},
+        "label":  {"fill": ("#25231e", 0.92), "leader": 0.55},
     },
     "adventure": {
-        "land_fill":   ("#F7F1DE", 0.50),  # beige — parchment land
-        "land_stroke": ("#B0BA99", 0.45),  # sage — coastlines
-        "state_stroke":("#B0BA99", 0.30),  # sage — state dividers
-        "vis_fill":    ("#B0BA99", 0.30),  # sage — visited tint
-        "vis_stroke":  ("#B0BA99", 0.55),  # sage — visited edge
-        # marker: brown dot + crisp 1px dark-brown ring (no glow)
+        "land_fill":    ("#F7F1DE", 0.50),  # beige - parchment land
+        "land_stroke":  ("#B0BA99", 0.45),  # sage - coastlines
+        "state_stroke": ("#B0BA99", 0.30),  # sage - state dividers
+        "vis_fill":     ("#B0BA99", 0.30),  # sage - visited tint
+        "vis_stroke":   ("#B0BA99", 0.55),  # sage - visited edge
         "marker": {"fill": ("#9D6638", 0.95), "ring": ("#4E220F", 0.90), "r": 0.007},
-        "label": {"fill": ("#4E220F", 0.92), "halo": ("#F7F1DE", 0.85), "size": 0.045},
+        "label":  {"fill": ("#4E220F", 0.92), "leader": 0.55},
     },
 }
 OUT_BY_PALETTE = {"default": "map-bg.svg", "adventure": "map-bg-adventure.svg"}
+
+# Legend geometry constants (viewBox units, scaled off the strip / font size).
+LEGEND_PITCH = 1.45     # row pitch as a multiple of the font size
+LEGEND_CHAR_W = 0.62    # conservative per-glyph advance as a multiple of font
+LEGEND_GAP = 0.35       # gap between a label and its leader line, x font
+LEGEND_HGAP = 3.0       # gap between a legend column and the map, x font
+LEGEND_VPAD = 0.9       # vertical padding above/below the stack, x max font
+LEGEND_MAX_LABEL = 30   # labels longer than this are truncated with an ellipsis
+CITY_MATCH_KM = 40      # a Natural Earth city within this range names a cluster
 
 
 def equal_earth(lon_deg, lat_deg):
@@ -142,6 +163,102 @@ def d2seg(px, py, ax, ay, bx, by):
     return (px - cx) ** 2 + (py - cy) ** 2
 
 
+def haversine_km(a, b):
+    r = 6371.0
+    p1, p2 = math.radians(a[1]), math.radians(b[1])
+    dp = p2 - p1
+    dl = math.radians(b[0] - a[0])
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(h))
+
+
+def cluster_points(pts, km):
+    """Greedy clustering: each point joins the first cluster with a member
+    within `km` kilometres. Returns a list of member lists."""
+    if km <= 0:
+        return [[p] for p in pts]
+    clusters = []
+    for p in pts:
+        for cl in clusters:
+            if any(haversine_km(p[:2], q[:2]) < km for q in cl):
+                cl.append(p)
+                break
+        else:
+            clusters.append([p])
+    return clusters
+
+
+def clean_name(raw):
+    """Normalise a KML placemark name into a legend-friendly label candidate:
+    fix non-breaking spaces, collapse whitespace, drop regional suffixes
+    ("Sámara, Costa Rica" -> "Sámara")."""
+    s = raw.replace("\xa0", " ")
+    s = " ".join(s.split())
+    return s.split(",")[0].strip()
+
+
+def norm_ws(s):
+    """Whitespace-normalised form of a name (NBSPs and runs of spaces collapse),
+    so override keys can be typed with plain spaces and still match KML names."""
+    return " ".join(s.replace("\xa0", " ").split())
+
+
+def load_overrides(path):
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"error: {path} is not valid JSON ({e})", file=sys.stderr)
+        print("  fix the file (or delete it) and re-run", file=sys.stderr)
+        sys.exit(2)
+    if not isinstance(data, dict) or \
+       not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
+        print(f"error: {path} must be a JSON object of "
+              '{"raw KML name": "clean label"} pairs', file=sys.stderr)
+        sys.exit(2)
+    return {norm_ws(k): v.strip() for k, v in data.items()}
+
+
+def pick_label(members, ov, ne_cities, warnings):
+    """Representative label for a cluster, in order of precedence:
+    1. The biggest Natural Earth populated place within CITY_MATCH_KM of any
+       member ("Ještěd" next to Prague still reads "Prague"); an override may
+       rename even that city ("København" -> "Copenhagen").
+    2. Otherwise, overrides rename members first, then the most common name
+       wins; ties go to the shortest.
+    """
+    best = None  # (pop_max, -distance_km, city name)
+    for lon, lat, _raw in members:
+        for cname, cpop, clon, clat in ne_cities:
+            d = haversine_km((lon, lat), (clon, clat))
+            if d <= CITY_MATCH_KM:
+                cand = (cpop, -d, cname)
+                if best is None or cand > best:
+                    best = cand
+    if best is not None:
+        label = ov.get(best[2], best[2])
+    else:
+        names = []
+        for _lon, _lat, raw in members:
+            c = clean_name(raw)
+            if norm_ws(raw) in ov:
+                names.append(ov[norm_ws(raw)])
+            elif c and c in ov:
+                names.append(ov[c])
+            elif c:
+                names.append(c)
+        votes = {}
+        for n in names:
+            votes[n] = votes.get(n, 0) + 1
+        label = max(votes, key=lambda n: (votes[n], -len(n))) if votes else "?"
+    if len(label) > LEGEND_MAX_LABEL:
+        cut = label[:LEGEND_MAX_LABEL - 1].rsplit(" ", 1)[0]
+        warnings.append(f"label truncated: {label!r} -> {cut + '…'!r}")
+        label = cut + "…"
+    return label
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--palette", default="default", choices=list(PALETTES),
@@ -149,47 +266,49 @@ def main() -> int:
     ap.add_argument("--out", default=None,
                     help="output filename (default: derived from --palette)")
     ap.add_argument("--opacity", type=float, default=None,
-                    help="absolute opacity (0–1) applied to every layer that "
+                    help="absolute opacity (0-1) applied to every layer that "
                          "doesn't have its own knob below; omit to use palette "
                          "defaults")
     ap.add_argument("--no-dots", dest="dots", action="store_false",
-                    help="don't plot a marker at every visited point "
+                    help="don't plot a marker for each city "
                          "(dots are on by default)")
     ap.add_argument("--land-opacity", type=float, default=None,
-                    help="absolute opacity (0–1) of the unvisited land base, "
+                    help="absolute opacity (0-1) of the unvisited land base, "
                          "coastlines, and state dividers; overrides --opacity; "
                          "default uses the palette")
     ap.add_argument("--visited-opacity", type=float, default=None,
-                    help="absolute opacity (0–1) of the visited regions (fill "
+                    help="absolute opacity (0-1) of the visited regions (fill "
                          "and edge); overrides --opacity; default uses the palette")
     ap.add_argument("--dot-opacity", type=float, default=None,
-                    help="absolute opacity (0–1) of the visited-point markers "
-                         "(dot, ring, halo); overrides --opacity; default uses "
-                         "the palette")
+                    help="absolute opacity (0-1) of the city markers "
+                         "(dot and ring); overrides --opacity; default uses the "
+                         "palette")
     ap.add_argument("--dot-size", type=float, default=None,
-                    help="absolute radius (viewBox units) of the visited-point "
-                         "markers; ring & halo scale with it; default uses the "
-                         "palette (~0.007–0.010)")
+                    help="absolute radius (viewBox units) of the city markers; "
+                         "the ring scales with it; default uses the palette")
     ap.add_argument("--crop-visited", action="store_true",
-                    help="size the output to a bounding box around the visited "
+                    help="size the map strip to a bounding box around the visited "
                          "region (projected screen space) instead of the whole "
                          "world; non-visited land shows faintly as context")
     ap.add_argument("--pad", type=float, default=0.02,
-                    help="padding around the map frame as a fraction of its size "
-                         "(default %(default)s; try ~0.08 with --crop-visited)")
-    ap.add_argument("--labels", action="store_true",
-                    help="label visited countries (Natural Earth anchors, "
-                         "decluttered by LABELRANK)")
-    ap.add_argument("--label-leaders", action="store_true",
-                    help="with --labels: nudge crowded labels aside and draw a "
-                         "short leader line to the country; a label with no "
-                         "clean spot nearby is omitted")
-    ap.add_argument("--label-opacity", type=float, default=None,
-                    help="absolute opacity (0–1) of country labels; overrides "
-                         "--opacity; default uses the palette")
+                    help="padding around the map strip as a fraction of its size "
+                         "(default %(default)s)")
+    ap.add_argument("--no-legend", dest="legend", action="store_false",
+                    help="drop the side legend columns and leader lines; "
+                         "render only the map strip with city dots")
+    ap.add_argument("--cluster-km", type=float, default=100.0,
+                    help="merge visited points within this many kilometres into "
+                         "one city dot with one label (default %(default)s; "
+                         "0 labels every point separately)")
+    ap.add_argument("--legend-breakpoint", type=int, default=1000,
+                    help="media width (px of the rendered <img> box) below which "
+                         "the legend columns and leader lines are hidden and the "
+                         "strip is scaled to full width (default %(default)s)")
+    ap.add_argument("--label-overrides", type=Path, default=OVERRIDES,
+                    help="optional JSON file of {'raw KML name': 'clean label'} "
+                         f"rewrites (default: {OVERRIDES} if present)")
     args = ap.parse_args()
-    for _k in ("opacity", "land_opacity", "visited_opacity", "dot_opacity",
-               "label_opacity"):
+    for _k in ("opacity", "land_opacity", "visited_opacity", "dot_opacity"):
         _v = getattr(args, _k)
         if _v is not None and not (0 <= _v <= 1.0):
             ap.error(f"--{_k.replace('_', '-')} must be between 0 and 1")
@@ -197,6 +316,8 @@ def main() -> int:
         ap.error("--dot-size must be a positive radius (<= 0.1)")
     if not (0 <= args.pad <= 1.0):
         ap.error("--pad must be between 0 and 1")
+    if args.cluster_km < 0:
+        ap.error("--cluster-km must be >= 0")
 
     if not KML.exists():
         print(f"missing {KML}", file=sys.stderr)
@@ -204,22 +325,34 @@ def main() -> int:
     out_path = REPO / "img" / (args.out or OUT_BY_PALETTE[args.palette])
     print(f"palette: {args.palette}  ->  {out_path.name}")
 
+    overrides = load_overrides(args.label_overrides)
+    if overrides:
+        print(f"  label overrides: {len(overrides)} from {args.label_overrides.name}")
+
     countries = fetch_json_cached(COUNTRIES_URL, CACHE / "ne_110m_countries.geojson")
     states = fetch_json_cached(STATES_URL, CACHE / "ne_110m_states.geojson")
+    pop = fetch_json_cached(POP_URL, CACHE / "ne_110m_populated_places_simple.geojson")
+    ne_cities = []  # (name, pop_max, lon, lat)
+    for f in pop["features"]:
+        p = f.get("properties", {})
+        if p.get("name") and p.get("pop_max") is not None:
+            ne_cities.append((p["name"], int(p["pop_max"]),
+                              float(p["longitude"]), float(p["latitude"])))
+    print(f"  reference cities: {len(ne_cities)} (Natural Earth populated places)")
 
     ns = {"k": "http://www.opengis.net/kml/2.2"}
-    pts = []
+    pts = []  # (lon, lat, name)
     for pm in ET.parse(KML).getroot().findall(".//k:Placemark", ns):
         c = pm.find("k:Point/k:coordinates", ns)
         if c is None or not c.text:
             continue
         lon, lat, *_ = [float(v) for v in c.text.strip().split(",")]
-        pts.append((lon, lat))
+        name = (pm.find("k:name", ns).text or "").strip()
+        pts.append((lon, lat, name))
     print(f"  visited points: {len(pts)}")
 
     # Unify features: countries (skip USA -> drawn via states) + US states.
     feats = []  # (fid, kind, geom, name)
-    country_label = {}  # fid -> (name, labelrank, label_x, label_y)
     for f in countries["features"]:
         if not f["geometry"]:
             continue
@@ -228,11 +361,6 @@ def main() -> int:
             continue
         feats.append((id(f), "country", f["geometry"],
                       props.get("ADMIN") or props.get("NAME") or "?"))
-        if props.get("LABEL_X") is not None and props.get("LABEL_Y") is not None:
-            country_label[id(f)] = (
-                props.get("NAME") or props.get("ADMIN") or "?",
-                int(props.get("LABELRANK") or 9),
-                float(props["LABEL_X"]), float(props["LABEL_Y"]))
     for f in states["features"]:
         if not f["geometry"]:
             continue
@@ -244,7 +372,7 @@ def main() -> int:
     # Classify: strict PIP, then rescue coastal misses to nearest polygon.
     visited_ids = set()
     orphans = []
-    for lon, lat in pts:
+    for lon, lat, _name in pts:
         insiders = [fid for fid, kind, geom, name in feats
                     if point_in_polygon(lon, lat, geom)]
         if insiders:
@@ -284,7 +412,8 @@ def main() -> int:
         prings = project_rings(geom)
         rx = [p[0] for ring in prings for p in ring]
         ry = [p[1] for ring in prings for p in ring]
-        xs += rx; ys += ry
+        xs += rx
+        ys += ry
         bounds = (min(rx), max(rx), min(ry), max(ry))
         all_polys.append((prings, kind, fid in visited_ids, bounds, fid))
 
@@ -294,15 +423,20 @@ def main() -> int:
         for prings, kind, visited, (b0, b1, b2, b3), fid in all_polys:
             if not visited:
                 continue
-            xs += [b0, b1]; ys += [b2, b3]
-        for lon, lat in pts:
+            xs += [b0, b1]
+            ys += [b2, b3]
+        for lon, lat, _name in pts:
             x, y = equal_earth(lon, lat)
-            xs.append(x); ys.append(y)
+            xs.append(x)
+            ys.append(y)
 
     minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
     pad = args.pad * max(maxx - minx, maxy - miny)
-    minx -= pad; maxx += pad; miny -= pad; maxy += pad
-    w, h = maxx - minx, maxy - miny
+    minx -= pad
+    maxx += pad
+    miny -= pad
+    maxy += pad
+    sw, sh = maxx - minx, maxy - miny
 
     def in_frame(bounds):
         b0, b1, b2, b3 = bounds
@@ -310,17 +444,84 @@ def main() -> int:
 
     if args.crop_visited:
         all_polys = [p for p in all_polys if in_frame(p[3])]
-        print(f"  cropped to visited region: {w:.3f} x {h:.3f} (pad {args.pad:g}), "
+        print(f"  cropped to visited region: {sw:.3f} x {sh:.3f} (pad {args.pad:g}), "
               f"{len(all_polys)} regions in frame")
 
-    def path_d(rings):
-        return "".join(
-            "M" + " L".join(f"{(x - minx):.3f} {(maxy - y):.3f}" for x, y in ring) + " Z"
-            for ring in rings)
+    # Cities: cluster the points, resolve labels, project cluster centroids.
+    warnings = []
+    clusters = cluster_points(pts, args.cluster_km)
+    cities = []  # (canvas cx computed later, canvas cy, label, n_members)
+    for members in clusters:
+        proj = [equal_earth(lon, lat) for lon, lat, _n in members]
+        cx = sum(p[0] for p in proj) / len(proj)
+        cy = sum(p[1] for p in proj) / len(proj)
+        label = pick_label(members, overrides, ne_cities, warnings) if args.legend else ""
+        cities.append((cx, cy, label, len(members)))
+    print(f"  cities: {len(cities)} (cluster {args.cluster_km:g} km, "
+          f"{len(pts)} points)")
 
-    # Resolve ABSOLUTE opacities. Rule (override-precedence, all on a 0–1 scale):
+    # Legend geometry. The canvas is [left legend][strip][right legend]; the
+    # strip is vertically centred, the label stacks fill the full height.
+    if args.legend and cities:
+        n = len(cities)
+        capacity = math.ceil(n / 2) + 2      # rows per side, with slack
+        font_max = sw / 65.0                 # ~11px at a 1150px-wide embed
+        vpad = LEGEND_VPAD * font_max
+        h_cap = 2.5 * sh                     # don't let the canvas grow forever
+        font = min(font_max, (h_cap - 2 * vpad) / (capacity * LEGEND_PITCH))
+        pitch = LEGEND_PITCH * font
+        gap, hgap = LEGEND_GAP * font, LEGEND_HGAP * font
+        longest = max(len(c[2]) for c in cities)
+        legend_w = LEGEND_CHAR_W * font * longest + gap + 0.5 * font
+        height = max(sh, capacity * pitch + 2 * vpad)
+        ox = legend_w + hgap                 # strip left edge in canvas coords
+        oy = (height - sh) / 2               # strip top edge
+        width = 2 * (legend_w + hgap) + sw
+    else:
+        cities = [(cx, cy, "", m) for cx, cy, _l, m in cities]
+        font = pitch = legend_w = 0.0
+        ox, oy, width, height = 0.0, 0.0, sw, sh
+
+    # Assign labels to sides. Process cities top-to-bottom by dot y; each side
+    # stacks slots downwards, so same-side leaders never cross. A label prefers
+    # the side its dot sits on and the side whose next slot is nearest its dot.
+    placed = []  # (side, label_x, label_y, cx, cy)
+    if args.legend and cities:
+        strip_mid = ox + sw / 2
+        slot = {"L": vpad + pitch / 2, "R": vpad + pitch / 2}
+        count = {"L": 0, "R": 0}
+        for cx, cy, label, _m in sorted(cities, key=lambda c: -c[1]):
+            dot_x = ox + (cx - minx)
+            dot_y = oy + (maxy - cy)
+            natural = "L" if dot_x <= strip_mid else "R"
+            best, best_cost = None, None
+            for side in ("L", "R"):
+                if count[side] >= capacity:
+                    continue
+                cost = abs(slot[side] - dot_y)
+                if side != natural:
+                    cost += 1.5 * pitch
+                if best_cost is None or cost < best_cost:
+                    best, best_cost = side, cost
+            if best is None:
+                warnings.append("legend capacity exceeded; a label was dropped")
+                continue
+            ly = slot[best]
+            slot[best] += pitch
+            count[best] += 1
+            placed.append((best, ly, dot_x, dot_y, label))
+        print(f"  legend: {count['L']} labels left, {count['R']} right "
+              f"(capacity {capacity}/side, font {font:.4f}, pitch {pitch:.4f})")
+
+    dupes = {l for l in (p[4] for p in placed) if l
+             and sum(1 for q in placed if q[4] == l) > 1}
+    for d in sorted(dupes):
+        warnings.append(f"duplicate label (add an override to disambiguate): {d!r}")
+    for w in warnings:
+        print(f"  note: {w}")
+
+    # Resolve ABSOLUTE opacities. Rule (override-precedence, all on a 0-1 scale):
     #   explicit per-layer knob  >  --opacity (catch-all)  >  palette default
-    # Nothing multiplies; every value emitted is the element's final opacity.
     P = PALETTES[args.palette]
 
     def op(knob, default):
@@ -330,185 +531,115 @@ def main() -> int:
             return args.opacity
         return default
 
-    LAND_FILL = P["land_fill"][0]
-    LAND_STROKE = P["land_stroke"][0]
-    STATE_STROKE = P["state_stroke"][0]
     LAND_FILL_OP = op(args.land_opacity, P["land_fill"][1])
     LAND_STROKE_OP = op(args.land_opacity, P["land_stroke"][1])
     STATE_STROKE_OP = op(args.land_opacity, P["state_stroke"][1])
-    VIS_FILL = P["vis_fill"][0]
-    VIS_STROKE = P["vis_stroke"][0]
     VIS_FILL_OP = op(args.visited_opacity, P["vis_fill"][1])
     VIS_STROKE_OP = op(args.visited_opacity, P["vis_stroke"][1])
-    SW = 0.004
+    MARK_FILL_OP = op(args.dot_opacity, P["marker"]["fill"][1])
+    RING_OP = op(args.dot_opacity, P["marker"]["ring"][1])
+    LABEL_FILL_OP = P["label"]["fill"][1]
+    LEADER_OP = P["label"]["leader"]
 
-    # Marker geometry + opacities (used only when dots are on).
     m = P["marker"]
     dot_r = args.dot_size if args.dot_size is not None else m["r"]
-    ring_r, halo_r = dot_r * 1.85, dot_r * 2.0
-    halo, ring = m.get("halo"), m.get("ring")
-    MARK_FILL, MARK_FILL_OP = m["fill"][0], op(args.dot_opacity, m["fill"][1])
-    HALO_OP = op(args.dot_opacity, halo[1]) if halo else None
-    RING_OP = op(args.dot_opacity, ring[1]) if ring else None
+    ring_r = dot_r * 1.85
 
-    # Country labels (visited only), anchored at Natural Earth LABEL_X/LABEL_Y and
-    # decluttered by LABELRANK: place highest-priority (lowest rank) first, drop
-    # any whose anchor is too close to one already placed.
-    LABELS = []
-    if args.labels:
-        lab = P["label"]
-        LFILL = lab["fill"][0]
-        LFILL_OP = op(args.label_opacity, lab["fill"][1])
-        LHALO = lab["halo"][0]
-        LHALO_OP = op(args.label_opacity, lab["halo"][1])
-        LSIZE = lab["size"]
-        LEADER_OP = op(args.label_opacity, lab["fill"][1]) * 0.5
-        cands = []
-        for _r, _k, _v, _b, fid in all_polys:
-            if _k != "country" or not _v:
-                continue
-            info = country_label.get(fid)
-            if info:
-                name, rank, lx, ly = info
-                x, y = equal_earth(lx, ly)
-                cands.append((rank, x, y, name))
-        cands.sort(key=lambda c: (c[0], c[1]))
-        # Box half-extents: char_w approximates the per-glyph half-advance, so
-        # len(name) * char_w is the half-width of the rendered text.
-        char_w, line_h, gap = LSIZE * 0.28, LSIZE * 0.35, LSIZE * 0.15
+    def path_d(rings):
+        return "".join(
+            "M" + " L".join(f"{(ox + x - minx):.3f} {(oy + maxy - y):.3f}"
+                            for x, y in ring) + " Z"
+            for ring in rings)
 
-        def overlaps(x, y, hw, hh, placed):
-            return any(abs(x - px) < (hw + phw + gap) and abs(y - py) < (hh + phh + gap)
-                       for px, py, phw, phh in placed)
-
-        def leader_hits_text(ax, ay, lx, ly, placed):
-            """True if the anchor->label segment strikes the text of an
-            already-placed label (its box shrunk to roughly the glyphs, since
-            a leader grazing a box edge is fine but crossing text is not)."""
-            for px, py, phw, phh in placed:
-                xmin, xmax = px - phw * 0.7, px + phw * 0.7
-                ymin, ymax = py - phh * 0.7, py + phh * 0.7
-                dx, dy = lx - ax, ly - ay
-                t0, t1 = 0.0, 1.0
-                for d, q, lo, hi in ((dx, ax, xmin, xmax), (dy, ay, ymin, ymax)):
-                    if abs(d) < 1e-12:
-                        if q < lo or q > hi:
-                            t0, t1 = 1.0, 0.0
-                            break
-                    else:
-                        ta, tb = (lo - q) / d, (hi - q) / d
-                        if ta > tb:
-                            ta, tb = tb, ta
-                        t0, t1 = max(t0, ta), min(t1, tb)
-                if t0 <= t1:
-                    return True
-            return False
-
-        placed = []  # (x, y, hw, hh) of label boxes already placed
-        if args.label_leaders:
-            # Try the anchor, then spiral outward for a free spot nearby. A
-            # leader must stay short and may not cross another label's text;
-            # a label with no clean spot within max_r is dropped rather than
-            # flung far from its country by a long stray line.
-            step, max_r = LSIZE * 0.45, LSIZE * 3.0
-            for rank, ax, ay, name in cands:
-                hw, hh = len(name) * char_w, line_h
-                lx, ly = ax, ay
-                if overlaps(ax, ay, hw, hh, placed):
-                    found, r = False, step
-                    while r <= max_r and not found:
-                        n = max(8, int(2 * math.pi * r / step))
-                        # stagger alternate rings so candidates don't retrace
-                        off = 0.5 / n if int(round(r / step)) % 2 else 0.0
-                        for i in range(n):
-                            ang = 2 * math.pi * (i + off) / n
-                            cx, cy = ax + r * math.cos(ang), ay + r * math.sin(ang)
-                            if not overlaps(cx, cy, hw, hh, placed) and \
-                               not leader_hits_text(ax, ay, cx, cy, placed):
-                                lx, ly, found = cx, cy, True
-                                break
-                        r += step
-                    if not found:
-                        print(f"  dropping boxed-in label: {name}")
-                        continue
-                placed.append((lx, ly, hw, hh))
-                LABELS.append((ax, ay, lx, ly, rank, name))
-        else:
-            # Declutter: drop a label if its anchor slot overlaps one placed.
-            for rank, x, y, name in cands:
-                hw, hh = len(name) * char_w, line_h
-                if overlaps(x, y, hw, hh, placed):
-                    continue
-                placed.append((x, y, hw, hh))
-                LABELS.append((x, y, x, y, rank, name))
-
-    print(f"  opacities: land={LAND_FILL_OP} visited={VIS_FILL_OP}"
-          + (f" dots={MARK_FILL_OP}" if args.dots else "")
-          + (f" labels={len(LABELS)}" if args.labels else ""))
+    def dot_pos(cx, cy):
+        return ox + (cx - minx), oy + (maxy - cy)
 
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.3f} {h:.3f}" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.3f} {height:.3f}" '
         f'preserveAspectRatio="xMidYMid slice" role="img" '
-        f'aria-label="World map with visited regions highlighted">',
+        f'aria-label="World map with visited regions highlighted and '
+        f'{"labelled city dots" if args.legend else "city dots"}">',
         '<title>Visited places</title>',
     ]
-    if args.labels:
-        lines.append(
-            '<style>.label{font-family:ui-sans-serif,system-ui,-apple-system,'
-            'Segoe UI,Roboto,sans-serif}'
-            '@media (max-width:700px){.lr5,.lr6{display:none}}'
-            '@media (max-width:480px){.lr4,.lr5,.lr6{display:none}}'
-            '</style>')
-    lines.append('<g shape-rendering="geometricPrecision">')
+    style = [
+        ":root{",
+        f"--land:{P['land_fill'][0]};--coast:{P['land_stroke'][0]};"
+        f"--state:{P['state_stroke'][0]};",
+        f"--visited:{P['vis_fill'][0]};--visited-edge:{P['vis_stroke'][0]};",
+        f"--dot:{m['fill'][0]};--dot-ring:{m['ring'][0]};"
+        f"--label:{P['label']['fill'][0]};--leader:{m['ring'][0]}",
+        "}",
+        ".legend{font-family:ui-sans-serif,system-ui,-apple-system,"
+        "Segoe UI,Roboto,sans-serif}",
+    ]
+    if args.legend and cities:
+        # Phones: hide the legends and scale the strip to the full canvas.
+        k = width / sw
+        tx = -k * ox
+        ty = height / 2 - k * (oy + sh / 2)
+        style.append(
+            f"@media (max-width:{args.legend_breakpoint}px){{"
+            ".legend,.leaders{display:none}"
+            f".map{{transform:translate({tx:.4f}px,{ty:.4f}px) "
+            f"scale({k:.4f})}}}}")
+    lines.append("<style>" + "".join(style) + "</style>")
+
+    lines.append('<g class="map" shape-rendering="geometricPrecision">')
     for prings, kind, visited, _bounds, _fid in all_polys:
         if kind == "country":
-            lines.append(f'<path d="{path_d(prings)}" fill="{LAND_FILL}" '
-                         f'fill-opacity="{LAND_FILL_OP}" stroke="{LAND_STROKE}" '
-                         f'stroke-opacity="{LAND_STROKE_OP}" stroke-width="{SW}"/>')
+            lines.append(f'<path d="{path_d(prings)}" fill="var(--land)" '
+                         f'fill-opacity="{LAND_FILL_OP}" stroke="var(--coast)" '
+                         f'stroke-opacity="{LAND_STROKE_OP}" stroke-width="0.8" '
+                         f'vector-effect="non-scaling-stroke"/>')
     for prings, kind, visited, _bounds, _fid in all_polys:
         if kind == "state":
             lines.append(f'<path d="{path_d(prings)}" fill="none" '
-                         f'stroke="{STATE_STROKE}" stroke-opacity="{STATE_STROKE_OP}" '
-                         f'stroke-width="0.003"/>')
+                         f'stroke="var(--state)" stroke-opacity="{STATE_STROKE_OP}" '
+                         f'stroke-width="0.5" vector-effect="non-scaling-stroke"/>')
     for prings, kind, visited, _bounds, _fid in all_polys:
         if visited:
-            lines.append(f'<path d="{path_d(prings)}" fill="{VIS_FILL}" '
-                         f'fill-opacity="{VIS_FILL_OP}" stroke="{VIS_STROKE}" '
-                         f'stroke-opacity="{VIS_STROKE_OP}" stroke-width="{SW}"/>')
-    # Visited-point markers: one per KML placemark, projected through Equal Earth.
+            lines.append(f'<path d="{path_d(prings)}" fill="var(--visited)" '
+                         f'fill-opacity="{VIS_FILL_OP}" stroke="var(--visited-edge)" '
+                         f'stroke-opacity="{VIS_STROKE_OP}" stroke-width="1.1" '
+                         f'vector-effect="non-scaling-stroke"/>')
+    # City dots: one per cluster, projected through Equal Earth.
     if args.dots:
-        for lon, lat in pts:
-            x, y = equal_earth(lon, lat)
-            cx, cy = (x - minx), (maxy - y)
-            if halo:
-                lines.append(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{halo_r:.4f}" '
-                             f'fill="{halo[0]}" fill-opacity="{HALO_OP}"/>')
-            lines.append(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{dot_r}" '
-                         f'fill="{MARK_FILL}" fill-opacity="{MARK_FILL_OP}"/>')
-            if ring:
-                # true 1px outline at any zoom; sits just outside the dot
-                lines.append(f'<circle cx="{cx:.3f}" cy="{cy:.3f}" r="{ring_r:.4f}" '
-                             f'fill="none" stroke="{ring[0]}" stroke-opacity="{RING_OP}" '
-                             f'stroke-width="1" vector-effect="non-scaling-stroke"/>')
-    if args.labels:
-        for ax, ay, lx, ly, rank, name in LABELS:
-            lcx, lcy = (lx - minx), (maxy - ly)
-            if args.label_leaders and (abs(lx - ax) > 1e-6 or abs(ly - ay) > 1e-6):
-                acx, acy = (ax - minx), (maxy - ay)
-                lines.append(
-                    f'<line x1="{acx:.3f}" y1="{acy:.3f}" x2="{lcx:.3f}" y2="{lcy:.3f}" '
-                    f'stroke="{LFILL}" stroke-opacity="{LEADER_OP}" stroke-width="1" '
-                    f'vector-effect="non-scaling-stroke"/>')
+        for cx, cy, _label, _nmem in cities:
+            dx, dy = dot_pos(cx, cy)
+            lines.append(f'<circle cx="{dx:.3f}" cy="{dy:.3f}" r="{dot_r}" '
+                         f'fill="var(--dot)" fill-opacity="{MARK_FILL_OP}"/>')
+            lines.append(f'<circle cx="{dx:.3f}" cy="{dy:.3f}" r="{ring_r:.4f}" '
+                         f'fill="none" stroke="var(--dot-ring)" '
+                         f'stroke-opacity="{RING_OP}" stroke-width="1" '
+                         f'vector-effect="non-scaling-stroke"/>')
+    lines.append("</g>")
+
+    if placed:
+        lines.append(f'<g class="leaders">')
+        for side, ly, dot_x, dot_y, _label in placed:
+            lx = ox - hgap if side == "L" else ox + sw + hgap
             lines.append(
-                f'<text class="label lr{rank}" x="{lcx:.3f}" y="{lcy:.3f}" '
-                f'font-size="{LSIZE}" fill="{LFILL}" fill-opacity="{LFILL_OP}" '
-                f'stroke="{LHALO}" stroke-width="{LSIZE * 0.30:.4f}" '
-                f'stroke-opacity="{LHALO_OP}" paint-order="stroke" '
-                f'text-anchor="middle" dominant-baseline="central">'
-                f'{html.escape(name)}</text>')
-    lines.append('</g></svg>')
+                f'<line x1="{lx:.3f}" y1="{ly:.3f}" x2="{dot_x:.3f}" '
+                f'y2="{dot_y:.3f}" stroke="var(--leader)" '
+                f'stroke-opacity="{LEADER_OP}" stroke-width="1" '
+                f'vector-effect="non-scaling-stroke"/>')
+        lines.append("</g>")
+        lines.append('<g class="legend">')
+        for side, ly, _dot_x, _dot_y, label in placed:
+            tx = ox - hgap - gap if side == "L" else ox + sw + hgap + gap
+            anchor = "end" if side == "L" else "start"
+            lines.append(
+                f'<text x="{tx:.3f}" y="{ly:.3f}" font-size="{font:.4f}" '
+                f'fill="var(--label)" fill-opacity="{LABEL_FILL_OP}" '
+                f'text-anchor="{anchor}" dominant-baseline="central">'
+                f'{html.escape(label)}</text>')
+        lines.append("</g>")
+
+    lines.append("</svg>")
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"\nWrote {out_path}  ({out_path.stat().st_size} bytes)")
+    print(f"  canvas {width:.3f} x {height:.3f} (aspect {width / height:.2f}:1, "
+          f"strip {sw:.3f} x {sh:.3f})")
     return 0
 
 
