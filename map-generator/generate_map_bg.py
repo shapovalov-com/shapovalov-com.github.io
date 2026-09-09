@@ -79,7 +79,7 @@ PALETTES = {
         "state_stroke": ("#B0BA99", 0.30),  # sage - state dividers
         "vis_fill":     ("#B0BA99", 0.30),  # sage - visited tint
         "vis_stroke":   ("#B0BA99", 0.55),  # sage - visited edge
-        "marker": {"fill": ("#9D6638", 0.95), "ring": ("#4E220F", 0.90), "r": 0.0055},
+        "marker": {"fill": ("#9D6638", 0.95), "ring": ("#4E220F", 0.90), "r": 0.008},
         "label":  {"fill": ("#4E220F", 0.92), "leader": 0.55},
     },
 }
@@ -108,7 +108,7 @@ RING_FACTOR = 1.85      # ring radius as a multiple of the dot radius
 # and the canvas never grows taller than H_CAP_FACTOR times the strip (the
 # busier legend column sets the row pitch that fits inside that cap).
 FONT_MAX_DIV = 65.0
-H_CAP_FACTOR = 2.15
+H_CAP_FACTOR = 3.3     # sized so labels stay legible in the 50rem content column
 
 # Helvetica/Arial advance widths (units per 1000 em) for label-width
 # estimation. Real rendering fonts differ by a few percent either way, hence
@@ -361,6 +361,36 @@ def leader_crossings(placed):
     return n
 
 
+def repair_crossings(order, slots, dts, rounds=500):
+    """Swap the slots of crossing leader pairs until none remain.
+
+    The tangent assignment is crossing-free when it completes, but its
+    conservative test can find no candidate for a slot (steep leader lines
+    with sparsely spaced slots); the fallback pick may then cross, and this
+    deterministic repair finishes the job. Works on the 3-decimal coordinates
+    that are actually emitted and counts grazing touches as crossings, so
+    sub-pixel near-misses in full precision cannot reappear after rounding.
+    """
+    def turn(a, b, c):
+        v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+        return 0 if abs(v) < 1e-12 else (1 if v > 0 else -1)
+
+    for _ in range(rounds):
+        ss = [((0.0, s), dts[i]) for s, i in zip(slots, order)]
+        for a in range(len(ss)):
+            p, q = ss[a]
+            for b in range(a + 1, len(ss)):
+                r, t = ss[b]
+                if turn(p, q, r) != turn(p, q, t) and \
+                   turn(r, t, p) != turn(r, t, q):
+                    order[a], order[b] = order[b], order[a]
+                    break
+            else:
+                continue
+            break
+    return order
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--palette", default="default", choices=list(PALETTES),
@@ -402,7 +432,7 @@ def main() -> int:
                     help="merge visited points within this many kilometres into "
                          "one city dot with one label (default %(default)s; "
                          "0 labels every point separately)")
-    ap.add_argument("--legend-breakpoint", type=int, default=1000,
+    ap.add_argument("--legend-breakpoint", type=int, default=700,
                     help="media width (px of the rendered <img> box) below which "
                          "the legend columns and leader lines are hidden and the "
                          "strip is scaled to full width (default %(default)s)")
@@ -615,13 +645,21 @@ def main() -> int:
                       max(vpad, height - vpad - spread * len(subset)))
             slots = [top + (i + 0.5) * spread for i in range(len(subset))]
             edge = ox - hgap if side == "L" else ox + sw + hgap
+            edge_q = round(edge, 3)
             sgn = 1.0 if side == "L" else -1.0
             dts = [(sgn * (dx - edge), dy) for dx, dy, _label in subset]
+            # Quantise exactly like the emitted coordinates (edge included),
+            # so the repair and the self-check see the geometry that ships.
+            dts_q = [(round(sgn * (round(dx, 3) - edge_q), 3), round(dy, 3))
+                     for dx, dy, _label in subset]
+            slots_q = [round(s, 3) for s in slots]
+            order = repair_crossings(tangent_order(dts, slots), slots_q, dts_q)
             segs = []
-            for s, i in zip(slots, tangent_order(dts, slots)):
+            for s, i in zip(slots_q, order):
                 dx, dy, label = subset[i]
+                dx, dy = round(dx, 3), round(dy, 3)
                 placed.append((side, s, dx, dy, label))
-                segs.append(((edge, s), (dx, dy)))
+                segs.append(((edge_q, s), (dx, dy)))
             crossed = leader_crossings(segs)
             if crossed:
                 warnings.append(f"{crossed} crossing leader lines on side {side}")

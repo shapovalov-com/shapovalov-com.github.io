@@ -82,13 +82,13 @@ at the top of `generate_map_bg.py`.
 
 ## Responsive behaviour (one file, two layouts)
 
-Below `--legend-breakpoint` (1000px of the rendered image width) a media
+Below `--legend-breakpoint` (700px of the rendered image width) a media
 query inside the SVG hides the legend columns and leader lines and scales
 the map strip to the full canvas width, so phones see the bare strip,
 centred, filling the image. The SVG scales with `preserveAspectRatio="meet"`:
 opening it full-size fits the window, letterboxed, never cropping labels.
-On the site, `site.css` breaks the figure out to ~1200px on wide viewports
-so the legend text is readable; keep the `width`/`height` attributes on the
+On the site the figure simply fills the content column (50rem); the label
+font is sized for that width. Keep the `width`/`height` attributes on the
 `<img>` in `index.html` in sync with the generated canvas aspect.
 
 ## What it runs

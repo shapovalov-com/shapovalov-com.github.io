@@ -80,17 +80,11 @@ header small {
   background: transparent;
 }
 
-/* Map display. The SVG carries two layouts in one file, switched by its
-   internal 1000px media query: wide images show the legend columns, narrow
-   ones show only the map strip (centred, filling the image width). Wide
-   viewports break the figure out of the 50rem column so the legend text is
-   comfortable; narrower viewports just show the figure at column width.
-   The SVG scales with "meet" (nothing is ever cropped); keep the
-   width/height attributes on the <img> in index.html in sync with the
-   generated viewBox aspect. See map-generator/README.md. */
-@media (min-width: 1100px) {
-  #map figure {
-    width: min(1200px, calc(100vw - 2 * var(--gutter)));
-    margin-inline: calc(50% - min(1200px, calc(100vw - 2 * var(--gutter))) / 2);
-  }
-}
+/* Map display. The figure fills the content column like every other
+   figure; the SVG carries two layouts in one file, switched by its internal
+   700px media query evaluated against the rendered image width: wider
+   images show the legend columns, narrower ones (phones) show only the map
+   strip, centred, filling the image width. The SVG scales with "meet"
+   (nothing is ever cropped); keep the width/height attributes on the <img>
+   in index.html in sync with the generated viewBox aspect.
+   See map-generator/README.md. */

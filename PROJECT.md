@@ -159,14 +159,13 @@ by `map-generator/`:
   ...): one block to restyle; the generator-side defaults live in
   `PALETTES` and the `STROKE_*` constants. Marker radii and legend
   font/pitch stay generator-side (see the map-generator README).
-- One file, two layouts: below 1000px image width an internal media query
+- One file, two layouts: below 700px image width an internal media query
   hides the legend columns and scales the map strip to the full canvas
   width (phones see the bare strip, centred, filling the image width).
   The SVG scales with "meet", so opening it full-size fits the window
-  without ever cropping labels. `site.css` breaks the figure out to
-  ~1200px on wide viewports so the legend text is readable; when the
-  canvas aspect changes after a re-render, update the `width`/`height`
-  attributes on the `<img>` in `index.html`.
+  without ever cropping labels. The figure fills the content column like
+  every other figure; when the canvas aspect changes after a re-render,
+  update the `width`/`height` attributes on the `<img>` in `index.html`.
 - Workflow after visiting somewhere new: re-export the KML from Google My Maps
   over `map-data/map.kml`, run `./map-generator/update-map.sh`, commit the
   regenerated `img/map-bg-adventure.svg`.
