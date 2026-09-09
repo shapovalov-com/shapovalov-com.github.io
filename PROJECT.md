@@ -200,9 +200,9 @@ by `map-generator/`:
   Fetch thumbnails manually until then.
 - `site.webmanifest` hardcodes white `theme_color` / `background_color`, which
   does not match the paper palette in dark mode.
-- On phones, opening the map SVG full-screen shows a center crop of the strip
-  (the responsive legend layout targets the embedded `<img>`, not the raw
-  document); view it on a desktop-width window for the full layout.
+- Opening the map SVG full-screen shows it at its intrinsic size (1200px
+  wide, scrollable), not stretched to the window; the responsive legend
+  layout targets the embedded `<img>`.
 
 ## Conventions
 

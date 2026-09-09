@@ -86,7 +86,7 @@ current live map; the flags (and only the flags) live in its `LIVE_FLAGS`:
 python3 map-generator/generate_map_bg.py \
     --palette adventure \
     --visited-opacity 0.3 --land-opacity 0.2 \
-    --dot-opacity 1 --dot-size 0.011 \
+    --dot-opacity 1 --dot-size 0.0055 \
     --crop-visited \
     --cluster-km 100
 ```

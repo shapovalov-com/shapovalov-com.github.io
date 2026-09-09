@@ -38,6 +38,7 @@ import html
 import json
 import math
 import sys
+import unicodedata
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -85,13 +86,48 @@ PALETTES = {
 OUT_BY_PALETTE = {"default": "map-bg.svg", "adventure": "map-bg-adventure.svg"}
 
 # Legend geometry constants (viewBox units, scaled off the strip / font size).
-LEGEND_PITCH = 1.40     # min row pitch as a multiple of the font size
-LEGEND_CHAR_W = 0.62    # conservative per-glyph advance as a multiple of font
+LEGEND_PITCH = 1.30     # min row pitch as a multiple of the font size
 LEGEND_GAP = 0.35       # gap between a label and its leader line, x font
 LEGEND_HGAP = 3.0       # gap between a legend column and the map, x font
 LEGEND_VPAD = 0.75      # vertical padding above/below the stack, x max font
 LEGEND_MAX_LABEL = 30   # labels longer than this are truncated with an ellipsis
+LEGEND_FONT_SAFETY = 1.12  # widen estimates: real fonts vary vs the metrics
 CITY_MATCH_KM = 40      # a Natural Earth city within this range names a cluster
+
+# Helvetica/Arial advance widths (units per 1000 em) for label-width
+# estimation. Real rendering fonts differ by a few percent either way, hence
+# LEGEND_FONT_SAFETY; accented letters decompose to their base glyph and
+# anything unknown defaults to 0.6 em.
+GLYPH_W = {
+    " ": 278, "!": 278, '"': 355, "#": 556, "$": 556, "%": 889, "&": 667,
+    "'": 191, "(": 333, ")": 333, "*": 389, "+": 584, ",": 278, "-": 333,
+    ".": 278, "/": 278, "0": 556, "1": 556, "2": 556, "3": 556, "4": 556,
+    "5": 556, "6": 556, "7": 556, "8": 556, "9": 556, ":": 278, ";": 278,
+    "<": 584, "=": 584, ">": 584, "?": 556, "@": 1015, "A": 667, "B": 667,
+    "C": 722, "D": 722, "E": 667, "F": 611, "G": 778, "H": 722, "I": 278,
+    "J": 500, "K": 667, "L": 556, "M": 833, "N": 722, "O": 778, "P": 667,
+    "Q": 778, "R": 722, "S": 667, "T": 611, "U": 722, "V": 667, "W": 944,
+    "X": 667, "Y": 667, "Z": 611, "[": 278, "\\": 278, "]": 278, "^": 469,
+    "_": 556, "`": 333, "a": 556, "b": 556, "c": 500, "d": 556, "e": 556,
+    "f": 278, "g": 556, "h": 556, "i": 222, "j": 222, "k": 500, "l": 222,
+    "m": 833, "n": 556, "o": 556, "p": 556, "q": 556, "r": 333, "s": 500,
+    "t": 278, "u": 556, "v": 500, "w": 722, "x": 500, "y": 500, "z": 500,
+    "{": 334, "|": 260, "}": 334, "~": 584,
+    "æ": 722, "Æ": 1000, "ø": 556, "Ø": 778, "ł": 222, "Ł": 556, "đ": 556,
+    "Đ": 722, "ð": 556, "Ð": 722, "þ": 556, "Þ": 667, "ß": 556, "…": 1000,
+    "–": 556, "—": 1000,
+}
+
+
+def text_width(name, font):
+    """Estimated rendered width of a label at the given font size, in
+    viewBox units."""
+    total = 0
+    for ch in unicodedata.normalize("NFD", name):
+        if unicodedata.combining(ch):
+            continue
+        total += GLYPH_W.get(ch, 600)
+    return total / 1000.0 * font * LEGEND_FONT_SAFETY
 
 
 def equal_earth(lon_deg, lat_deg):
@@ -522,14 +558,14 @@ def main() -> int:
         n_left = sum(1 for c in cities if c[0] - minx < sw / 2)
         n_right = len(cities) - n_left
         rows = max(n_left, n_right, 1)
-        font_max = sw / 65.0                 # ~11px at a 1150px-wide embed
+        font_max = sw / 65.0                 # font ceiling for sparse datasets
         vpad = LEGEND_VPAD * font_max
-        h_cap = 2.8 * sh                     # don't let the canvas grow forever
+        h_cap = 2.15 * sh                    # don't let the canvas grow forever
         font = min(font_max, (h_cap - 2 * vpad) / (rows * LEGEND_PITCH))
         pitch = LEGEND_PITCH * font          # min row pitch (busier side)
         gap, hgap = LEGEND_GAP * font, LEGEND_HGAP * font
-        longest = max(len(c[2]) for c in cities)
-        legend_w = LEGEND_CHAR_W * font * longest + gap + 0.5 * font
+        widest = max(text_width(c[2], font) for c in cities)
+        legend_w = widest + gap + 0.5 * font
         height = max(sh, rows * pitch + 2 * vpad)
         ox = legend_w + hgap                 # strip left edge in canvas coords
         oy = (height - sh) / 2               # strip top edge
@@ -552,8 +588,16 @@ def main() -> int:
             subset = halves[side]
             if not subset:
                 continue
-            spread = (height - 2 * vpad) / len(subset)
-            slots = [vpad + (i + 0.5) * spread for i in range(len(subset))]
+            # Rows sit at the minimum pitch, or wider only if the side's dots
+            # span more height than that; the block is centred on its dots'
+            # latitude span and kept inside the canvas padding.
+            dys = [dy for _dx, dy, _label in subset]
+            span = max(dys) - min(dys)
+            spread = max(pitch, span / max(1, len(subset) - 1))
+            top = (min(dys) + max(dys)) / 2 - spread * len(subset) / 2
+            top = min(max(vpad, top),
+                      max(vpad, height - vpad - spread * len(subset)))
+            slots = [top + (i + 0.5) * spread for i in range(len(subset))]
             edge = ox - hgap if side == "L" else ox + sw + hgap
             sgn = 1.0 if side == "L" else -1.0
             dts = [(sgn * (dx - edge), dy) for dx, dy, _label in subset]
@@ -610,8 +654,11 @@ def main() -> int:
     def dot_pos(cx, cy):
         return ox + (cx - minx), oy + (maxy - cy)
 
+    attr_w = 1200
+    attr_h = round(attr_w * height / width)
     lines = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.3f} {height:.3f}" '
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{attr_w}" height="{attr_h}" '
+        f'viewBox="0 0 {width:.3f} {height:.3f}" '
         f'preserveAspectRatio="xMidYMid slice" role="img" '
         f'aria-label="World map with visited regions highlighted and '
         f'{"labelled city dots" if args.legend else "city dots"}">',
@@ -666,7 +713,7 @@ def main() -> int:
                          f'fill="var(--dot)" fill-opacity="{MARK_FILL_OP}"/>')
             lines.append(f'<circle cx="{dx:.3f}" cy="{dy:.3f}" r="{ring_r:.4f}" '
                          f'fill="none" stroke="var(--dot-ring)" '
-                         f'stroke-opacity="{RING_OP}" stroke-width="1" '
+                         f'stroke-opacity="{RING_OP}" stroke-width="0.5" '
                          f'vector-effect="non-scaling-stroke"/>')
     lines.append("</g>")
 
