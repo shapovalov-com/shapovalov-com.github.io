@@ -9,8 +9,8 @@ Layout: [left legend][map strip][right legend]
   - Points closer than --cluster-km merge into one city dot/label.
   - Labels stack top-to-bottom in dot-latitude order: dots left of the
     strip's midline label in the left column, the rest in the right one,
-    so no leader line ever crosses the midline and same-side leaders
-    never cross each other.
+    so no leader line ever crosses the midline. Within a column a
+    tangent ordering keeps leaders from crossing each other.
   - Colours are emitted as CSS custom properties on :root (edit them in one
     place to recolour the whole map).
   - Phones (image box <= the media breakpoint) hide the legends and scale the
@@ -261,6 +261,54 @@ def pick_label(members, ov, ne_cities, warnings):
     return label
 
 
+def tangent_order(dts, slots):
+    """Slot order (top to bottom) for straight leaders that never cross.
+
+    All leaders of a column start on one vertical line (the column edge).
+    Assign slots top to bottom, giving each slot the "upper tangent" dot: the
+    remaining dot whose leader line leaves every other remaining dot at or
+    below it. Every later leader joins a lower slot to a dot below that
+    line, so it can never cross it. Falls back to the topmost remaining dot
+    if no tangent exists (should not happen with distinct dots).
+    """
+    remaining = list(range(len(dts)))
+    order = []
+    for s in slots:
+        best = None
+        for D in remaining:
+            dD, tD = dts[D]
+            for E in remaining:
+                if E == D:
+                    continue
+                dE, tE = dts[E]
+                if dD * (tE - s) - (tD - s) * dE < -1e-9:
+                    break  # E sits above D's line; D is not the tangent
+            else:
+                if best is None or tD < dts[best][1]:
+                    best = D
+        if best is None:
+            best = min(remaining, key=lambda i: dts[i][1])
+        order.append(best)
+        remaining.remove(best)
+    return order
+
+
+def leader_crossings(placed):
+    """Exact count of crossing leader pairs within a side (orientation test)."""
+    def turn(a, b, c):
+        v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+        return 0 if abs(v) < 1e-12 else (1 if v > 0 else -1)
+
+    n = 0
+    for i in range(len(placed)):
+        a, b = placed[i]
+        for j in range(i + 1, len(placed)):
+            c, d = placed[j]
+            if turn(a, b, c) != turn(a, b, d) and turn(c, d, a) != turn(c, d, b):
+                n += 1
+    return n
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--palette", default="default", choices=list(PALETTES),
@@ -491,9 +539,9 @@ def main() -> int:
         font = pitch = legend_w = 0.0
         ox, oy, width, height = 0.0, 0.0, sw, sh
 
-    # Place the labels: each side takes its half's cities in dot-latitude
-    # order, spread evenly across the canvas height; same-side leaders never
-    # cross each other either.
+    # Place the labels: each side takes its half's cities, ordered by the
+    # tangent algorithm so no two leaders of a side cross, and spread evenly
+    # across the canvas height.
     placed = []  # (side, label_y, dot_x, dot_y, label)
     if args.legend and cities:
         halves = {"L": [], "R": []}
@@ -501,14 +549,25 @@ def main() -> int:
             dx, dy = ox + (cx - minx), oy + (maxy - cy)
             halves["L" if cx - minx < sw / 2 else "R"].append((dx, dy, label))
         for side in ("L", "R"):
-            subset = sorted(halves[side], key=lambda d: d[1])
+            subset = halves[side]
             if not subset:
                 continue
             spread = (height - 2 * vpad) / len(subset)
-            for i, (dx, dy, label) in enumerate(subset):
-                placed.append((side, vpad + (i + 0.5) * spread, dx, dy, label))
+            slots = [vpad + (i + 0.5) * spread for i in range(len(subset))]
+            edge = ox - hgap if side == "L" else ox + sw + hgap
+            sgn = 1.0 if side == "L" else -1.0
+            dts = [(sgn * (dx - edge), dy) for dx, dy, _label in subset]
+            segs = []
+            for s, i in zip(slots, tangent_order(dts, slots)):
+                dx, dy, label = subset[i]
+                placed.append((side, s, dx, dy, label))
+                segs.append(((edge, s), (dx, dy)))
+            crossed = leader_crossings(segs)
+            if crossed:
+                warnings.append(f"{crossed} crossing leader lines on side {side}")
         print(f"  legend: {n_left} labels left, {n_right} right (split at strip "
-              f"midline {sw / 2:.3f}, font {font:.4f}, min pitch {pitch:.4f})")
+              f"midline {sw / 2:.3f}, font {font:.4f}, min pitch {pitch:.4f}, "
+              f"tangent-ordered)")
 
     dupes = {l for l in (p[4] for p in placed) if l
              and sum(1 for q in placed if q[4] == l) > 1}

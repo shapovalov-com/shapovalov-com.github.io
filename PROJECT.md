@@ -148,8 +148,9 @@ by `map-generator/`:
   one city dot; each city gets a label in a flanking legend column, tied to
   its dot by a 1px leader line. Cities left of the map's midline label in
   the left column, the rest in the right one, so no leader crosses the
-  midline; within a side labels stack in dot-latitude order, so same-side
-  leaders never cross either. Clusters are named after the biggest
+  midline; within a column a tangent ordering keeps same-side leaders
+  from crossing (the generator verifies this on every run). Clusters are
+  named after the biggest
   Natural Earth populated place within 40 km (a guesthouse outside Prague
   reads "Prague"); manual renames live in `map-data/label-overrides.json`
   (plain JSON, whitespace-insensitive keys, can rename even the city names).

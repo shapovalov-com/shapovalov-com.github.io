@@ -3,10 +3,13 @@
 Produces `img/map-bg-adventure.svg` — the Equal-Earth world map embedded in
 `index.html`: visited countries and US states tinted, one dot per visited
 city, and the city names in two legend columns flanking the map, each tied to
-its dot by a 1px leader line. Labels stack top-to-bottom in dot-latitude
-order; cities left of the map's midline label in the left column, the rest
-in the right one, so no leader line ever crosses the midline and leaders on
-the same side never cross each other.
+its dot by a 1px leader line. Cities left of the map's midline label in
+the left column, the rest in the right one, so no leader line ever crosses
+the midline. Within a column, labels are tangent-ordered — each slot, top
+to bottom, takes the topmost remaining dot whose leader line leaves every
+other remaining dot below it — so leaders on the same side never cross
+either. The generator counts crossings itself and warns if a future dataset
+ever breaks the invariant.
 
 ## One-click update
 
