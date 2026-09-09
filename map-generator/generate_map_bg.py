@@ -79,7 +79,7 @@ PALETTES = {
         "state_stroke": ("#B0BA99", 0.30),  # sage - state dividers
         "vis_fill":     ("#B0BA99", 0.30),  # sage - visited tint
         "vis_stroke":   ("#B0BA99", 0.55),  # sage - visited edge
-        "marker": {"fill": ("#9D6638", 0.95), "ring": ("#4E220F", 0.90), "r": 0.007},
+        "marker": {"fill": ("#9D6638", 0.95), "ring": ("#4E220F", 0.90), "r": 0.0055},
         "label":  {"fill": ("#4E220F", 0.92), "leader": 0.55},
     },
 }
@@ -93,6 +93,22 @@ LEGEND_VPAD = 0.75      # vertical padding above/below the stack, x max font
 LEGEND_MAX_LABEL = 30   # labels longer than this are truncated with an ellipsis
 LEGEND_FONT_SAFETY = 1.12  # widen estimates: real fonts vary vs the metrics
 CITY_MATCH_KM = 40      # a Natural Earth city within this range names a cluster
+
+# Line weights (CSS px: every stroke is rendered non-scaling) and marker
+# sizing. Emitted as the size custom properties in the SVG's <style> block;
+# edit them there for one-off tweaks, here to change future renders.
+STROKE_COAST = 0.8      # coastlines / country outlines
+STROKE_STATE = 0.5      # US-state dividers
+STROKE_VISITED = 1.1    # visited-region edge
+STROKE_LEADER = 1.0     # label leader lines
+STROKE_RING = 0.5       # ring around each city dot
+RING_FACTOR = 1.85      # ring radius as a multiple of the dot radius
+
+# Legend font sizing: the font is at most 1/FONT_MAX_DIV of the strip width,
+# and the canvas never grows taller than H_CAP_FACTOR times the strip (the
+# busier legend column sets the row pitch that fits inside that cap).
+FONT_MAX_DIV = 65.0
+H_CAP_FACTOR = 2.15
 
 # Helvetica/Arial advance widths (units per 1000 em) for label-width
 # estimation. Real rendering fonts differ by a few percent either way, hence
@@ -558,9 +574,9 @@ def main() -> int:
         n_left = sum(1 for c in cities if c[0] - minx < sw / 2)
         n_right = len(cities) - n_left
         rows = max(n_left, n_right, 1)
-        font_max = sw / 65.0                 # font ceiling for sparse datasets
+        font_max = sw / FONT_MAX_DIV         # font ceiling for sparse datasets
         vpad = LEGEND_VPAD * font_max
-        h_cap = 2.15 * sh                    # don't let the canvas grow forever
+        h_cap = H_CAP_FACTOR * sh            # don't let the canvas grow forever
         font = min(font_max, (h_cap - 2 * vpad) / (rows * LEGEND_PITCH))
         pitch = LEGEND_PITCH * font          # min row pitch (busier side)
         gap, hgap = LEGEND_GAP * font, LEGEND_HGAP * font
@@ -643,7 +659,7 @@ def main() -> int:
 
     m = P["marker"]
     dot_r = args.dot_size if args.dot_size is not None else m["r"]
-    ring_r = dot_r * 1.85
+    ring_r = dot_r * RING_FACTOR
 
     def path_d(rings):
         return "".join(
@@ -668,8 +684,14 @@ def main() -> int:
         f"--state:{P['state_stroke'][0]};",
         f"--visited:{P['vis_fill'][0]};--visited-edge:{P['vis_stroke'][0]};",
         f"--dot:{m['fill'][0]};--dot-ring:{m['ring'][0]};"
-        f"--label:{P['label']['fill'][0]};--leader:{m['ring'][0]}",
+        f"--label:{P['label']['fill'][0]};--leader:{m['ring'][0]};",
+        f"--dot-r:{dot_r};"
+        f"--stroke-coast:{STROKE_COAST};--stroke-state:{STROKE_STATE};"
+        f"--stroke-visited:{STROKE_VISITED};--stroke-leader:{STROKE_LEADER};"
+        f"--stroke-ring:{STROKE_RING}",
         "}",
+        # Radius overrides: CSS geometry keeps the r attributes as fallback.
+        f".dot{{r:var(--dot-r)}}.ring{{r:calc(var(--dot-r) * {RING_FACTOR})}}",
         ".legend{font-family:ui-sans-serif,system-ui,-apple-system,"
         "Segoe UI,Roboto,sans-serif}",
     ]
@@ -690,28 +712,28 @@ def main() -> int:
         if kind == "country":
             lines.append(f'<path d="{path_d(prings)}" fill="var(--land)" '
                          f'fill-opacity="{LAND_FILL_OP}" stroke="var(--coast)" '
-                         f'stroke-opacity="{LAND_STROKE_OP}" stroke-width="0.8" '
+                         f'stroke-opacity="{LAND_STROKE_OP}" stroke-width="var(--stroke-coast)" '
                          f'vector-effect="non-scaling-stroke"/>')
     for prings, kind, visited, _bounds, _fid in all_polys:
         if kind == "state":
             lines.append(f'<path d="{path_d(prings)}" fill="none" '
                          f'stroke="var(--state)" stroke-opacity="{STATE_STROKE_OP}" '
-                         f'stroke-width="0.5" vector-effect="non-scaling-stroke"/>')
+                         f'stroke-width="var(--stroke-state)" vector-effect="non-scaling-stroke"/>')
     for prings, kind, visited, _bounds, _fid in all_polys:
         if visited:
             lines.append(f'<path d="{path_d(prings)}" fill="var(--visited)" '
                          f'fill-opacity="{VIS_FILL_OP}" stroke="var(--visited-edge)" '
-                         f'stroke-opacity="{VIS_STROKE_OP}" stroke-width="1.1" '
+                         f'stroke-opacity="{VIS_STROKE_OP}" stroke-width="var(--stroke-visited)" '
                          f'vector-effect="non-scaling-stroke"/>')
     # City dots: one per cluster, projected through Equal Earth.
     if args.dots:
         for cx, cy, _label, _nmem in cities:
             dx, dy = dot_pos(cx, cy)
-            lines.append(f'<circle cx="{dx:.3f}" cy="{dy:.3f}" r="{dot_r}" '
+            lines.append(f'<circle class="dot" cx="{dx:.3f}" cy="{dy:.3f}" r="{dot_r}" '
                          f'fill="var(--dot)" fill-opacity="{MARK_FILL_OP}"/>')
-            lines.append(f'<circle cx="{dx:.3f}" cy="{dy:.3f}" r="{ring_r:.4f}" '
+            lines.append(f'<circle class="ring" cx="{dx:.3f}" cy="{dy:.3f}" r="{ring_r:.4f}" '
                          f'fill="none" stroke="var(--dot-ring)" '
-                         f'stroke-opacity="{RING_OP}" stroke-width="0.5" '
+                         f'stroke-opacity="{RING_OP}" stroke-width="var(--stroke-ring)" '
                          f'vector-effect="non-scaling-stroke"/>')
     lines.append("</g>")
 
@@ -722,7 +744,7 @@ def main() -> int:
             lines.append(
                 f'<line x1="{lx:.3f}" y1="{ly:.3f}" x2="{dot_x:.3f}" '
                 f'y2="{dot_y:.3f}" stroke="var(--leader)" '
-                f'stroke-opacity="{LEADER_OP}" stroke-width="1" '
+                f'stroke-opacity="{LEADER_OP}" stroke-width="var(--stroke-leader)" '
                 f'vector-effect="non-scaling-stroke"/>')
         lines.append("</g>")
         lines.append('<g class="legend">')

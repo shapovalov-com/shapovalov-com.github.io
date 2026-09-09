@@ -20,7 +20,6 @@ LIVE_FLAGS=(
     --visited-opacity 0.3
     --land-opacity 0.2
     --dot-opacity 1
-    --dot-size 0.0055
     --crop-visited
     --cluster-km 100
 )

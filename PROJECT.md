@@ -154,8 +154,10 @@ by `map-generator/`:
   Natural Earth populated place within 40 km (a guesthouse outside Prague
   reads "Prague"); manual renames live in `map-data/label-overrides.json`
   (plain JSON, whitespace-insensitive keys, can rename even the city names).
-- Colours are CSS custom properties on `:root` inside the SVG (`--land`,
-  `--coast`, `--visited`, `--dot`, `--label`, ...): one block to recolour.
+- Colours and line weights are CSS custom properties on `:root` inside the
+  SVG (`--land`, `--coast`, `--visited`, `--dot`, `--label`, `--stroke-*`,
+  `--dot-r`, ...): one block to restyle; the generator-side defaults live
+  in `PALETTES` and the `STROKE_*` constants.
 - One file, two layouts: below 1000px image width an internal media query
   hides the legend columns and scales the map strip to the full canvas
   width (phones see the bare strip, centred, filling the image width).

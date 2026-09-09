@@ -60,12 +60,23 @@ the rest.
    Natural Earth city names (`"København": "Copenhagen"`). Plain JSON, one
    line per rename; a syntax error stops the run with the exact problem.
 
-## Colours
+## Colours and sizes
 
-All colours are emitted as CSS custom properties on `:root` in one `<style>`
-block at the top of the SVG: `--land`, `--coast`, `--state`, `--visited`,
-`--visited-edge`, `--dot`, `--dot-ring`, `--label`, `--leader`. Edit the
-block in the SVG to recolour, or edit `PALETTES` in the script and re-run.
+All colours and line weights are emitted as CSS custom properties on `:root`
+in one `<style>` block at the top of the SVG. Edit the block in the SVG for a
+one-off look, or edit `PALETTES` / the `STROKE_*` constants in the script and
+re-run to change future renders (a re-render overwrites manual SVG edits).
+
+Colours: `--land`, `--coast`, `--state`, `--visited`, `--visited-edge`,
+`--dot`, `--dot-ring`, `--label`, `--leader`.
+Sizes (CSS px, rendered non-scaling): `--stroke-coast`, `--stroke-state`,
+`--stroke-visited`, `--stroke-leader`, `--stroke-ring`; the city dot radius
+is `--dot-r` (the ring derives from it).
+
+What deliberately stays in the script: the legend font size, row pitch, and
+column widths. They define the canvas geometry, so changing them means
+re-deriving the layout; they live as named constants (`LEGEND_*`,
+`FONT_MAX_DIV`, `H_CAP_FACTOR`) at the top of `generate_map_bg.py`.
 
 ## Responsive behaviour (one file, two layouts)
 
@@ -87,7 +98,7 @@ current live map; the flags (and only the flags) live in its `LIVE_FLAGS`:
 python3 map-generator/generate_map_bg.py \
     --palette adventure \
     --visited-opacity 0.3 --land-opacity 0.2 \
-    --dot-opacity 1 --dot-size 0.0055 \
+    --dot-opacity 1 \
     --crop-visited \
     --cluster-km 100
 ```
