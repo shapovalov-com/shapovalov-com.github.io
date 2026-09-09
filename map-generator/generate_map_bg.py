@@ -7,8 +7,10 @@ map. Each label is tied to its dot by a 1px leader line.
 Layout: [left legend][map strip][right legend]
   - The strip is cropped to the visited region (as before).
   - Points closer than --cluster-km merge into one city dot/label.
-  - Labels stack top-to-bottom in dot-latitude order on each side, so
-    same-side leader lines never cross.
+  - Labels stack top-to-bottom in dot-latitude order: dots left of the
+    strip's midline label in the left column, the rest in the right one,
+    so no leader line ever crosses the midline and same-side leaders
+    never cross each other.
   - Colours are emitted as CSS custom properties on :root (edit them in one
     place to recolour the whole map).
   - Phones (image box <= the media breakpoint) hide the legends and scale the
@@ -83,11 +85,11 @@ PALETTES = {
 OUT_BY_PALETTE = {"default": "map-bg.svg", "adventure": "map-bg-adventure.svg"}
 
 # Legend geometry constants (viewBox units, scaled off the strip / font size).
-LEGEND_PITCH = 1.45     # row pitch as a multiple of the font size
+LEGEND_PITCH = 1.40     # min row pitch as a multiple of the font size
 LEGEND_CHAR_W = 0.62    # conservative per-glyph advance as a multiple of font
 LEGEND_GAP = 0.35       # gap between a label and its leader line, x font
 LEGEND_HGAP = 3.0       # gap between a legend column and the map, x font
-LEGEND_VPAD = 0.9       # vertical padding above/below the stack, x max font
+LEGEND_VPAD = 0.75      # vertical padding above/below the stack, x max font
 LEGEND_MAX_LABEL = 30   # labels longer than this are truncated with an ellipsis
 CITY_MATCH_KM = 40      # a Natural Earth city within this range names a cluster
 
@@ -462,18 +464,25 @@ def main() -> int:
 
     # Legend geometry. The canvas is [left legend][strip][right legend]; the
     # strip is vertically centred, the label stacks fill the full height.
+    # Sides are strictly geographic: dots left of the strip's midline label
+    # in the left column, the rest in the right one, so no leader line ever
+    # crosses the midline. The sides can be uneven (the visited region is
+    # denser in the east), so each column spreads its own labels evenly over
+    # the full height and the font is sized by the busier side.
+    n_left = n_right = rows = 0
     if args.legend and cities:
-        n = len(cities)
-        capacity = math.ceil(n / 2) + 2      # rows per side, with slack
+        n_left = sum(1 for c in cities if c[0] - minx < sw / 2)
+        n_right = len(cities) - n_left
+        rows = max(n_left, n_right, 1)
         font_max = sw / 65.0                 # ~11px at a 1150px-wide embed
         vpad = LEGEND_VPAD * font_max
-        h_cap = 2.5 * sh                     # don't let the canvas grow forever
-        font = min(font_max, (h_cap - 2 * vpad) / (capacity * LEGEND_PITCH))
-        pitch = LEGEND_PITCH * font
+        h_cap = 2.8 * sh                     # don't let the canvas grow forever
+        font = min(font_max, (h_cap - 2 * vpad) / (rows * LEGEND_PITCH))
+        pitch = LEGEND_PITCH * font          # min row pitch (busier side)
         gap, hgap = LEGEND_GAP * font, LEGEND_HGAP * font
         longest = max(len(c[2]) for c in cities)
         legend_w = LEGEND_CHAR_W * font * longest + gap + 0.5 * font
-        height = max(sh, capacity * pitch + 2 * vpad)
+        height = max(sh, rows * pitch + 2 * vpad)
         ox = legend_w + hgap                 # strip left edge in canvas coords
         oy = (height - sh) / 2               # strip top edge
         width = 2 * (legend_w + hgap) + sw
@@ -482,36 +491,24 @@ def main() -> int:
         font = pitch = legend_w = 0.0
         ox, oy, width, height = 0.0, 0.0, sw, sh
 
-    # Assign labels to sides. Process cities top-to-bottom by dot y; each side
-    # stacks slots downwards, so same-side leaders never cross. A label prefers
-    # the side its dot sits on and the side whose next slot is nearest its dot.
-    placed = []  # (side, label_x, label_y, cx, cy)
+    # Place the labels: each side takes its half's cities in dot-latitude
+    # order, spread evenly across the canvas height; same-side leaders never
+    # cross each other either.
+    placed = []  # (side, label_y, dot_x, dot_y, label)
     if args.legend and cities:
-        strip_mid = ox + sw / 2
-        slot = {"L": vpad + pitch / 2, "R": vpad + pitch / 2}
-        count = {"L": 0, "R": 0}
-        for cx, cy, label, _m in sorted(cities, key=lambda c: -c[1]):
-            dot_x = ox + (cx - minx)
-            dot_y = oy + (maxy - cy)
-            natural = "L" if dot_x <= strip_mid else "R"
-            best, best_cost = None, None
-            for side in ("L", "R"):
-                if count[side] >= capacity:
-                    continue
-                cost = abs(slot[side] - dot_y)
-                if side != natural:
-                    cost += 1.5 * pitch
-                if best_cost is None or cost < best_cost:
-                    best, best_cost = side, cost
-            if best is None:
-                warnings.append("legend capacity exceeded; a label was dropped")
+        halves = {"L": [], "R": []}
+        for cx, cy, label, _m in cities:
+            dx, dy = ox + (cx - minx), oy + (maxy - cy)
+            halves["L" if cx - minx < sw / 2 else "R"].append((dx, dy, label))
+        for side in ("L", "R"):
+            subset = sorted(halves[side], key=lambda d: d[1])
+            if not subset:
                 continue
-            ly = slot[best]
-            slot[best] += pitch
-            count[best] += 1
-            placed.append((best, ly, dot_x, dot_y, label))
-        print(f"  legend: {count['L']} labels left, {count['R']} right "
-              f"(capacity {capacity}/side, font {font:.4f}, pitch {pitch:.4f})")
+            spread = (height - 2 * vpad) / len(subset)
+            for i, (dx, dy, label) in enumerate(subset):
+                placed.append((side, vpad + (i + 0.5) * spread, dx, dy, label))
+        print(f"  legend: {n_left} labels left, {n_right} right (split at strip "
+              f"midline {sw / 2:.3f}, font {font:.4f}, min pitch {pitch:.4f})")
 
     dupes = {l for l in (p[4] for p in placed) if l
              and sum(1 for q in placed if q[4] == l) > 1}

@@ -4,7 +4,9 @@ Produces `img/map-bg-adventure.svg` — the Equal-Earth world map embedded in
 `index.html`: visited countries and US states tinted, one dot per visited
 city, and the city names in two legend columns flanking the map, each tied to
 its dot by a 1px leader line. Labels stack top-to-bottom in dot-latitude
-order, so leader lines on the same side never cross.
+order; cities left of the map's midline label in the left column, the rest
+in the right one, so no leader line ever crosses the midline and leaders on
+the same side never cross each other.
 
 ## One-click update
 
