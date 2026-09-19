@@ -65,8 +65,6 @@ header small {
 
         #trips article ul a {
             display: inline-block;
-            background: var(--surface);
-            color: var(--text);
             border: 1px solid var(--border);
             border-radius: var(--r);
             padding: var(--s-3) var(--s-5);
@@ -91,9 +89,145 @@ header small {
     background: transparent;
 }
 
-h1, h2, h3, h4, p {
+h1, h2, h3, h4, p, a, a:visited {
     color: #748E63;
 }
+
+
+/*==================================Youtube smulation =======================================*/
+.block-preview {
+}
+    /* Thumbnail */
+    .block-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+/* Center play button */
+.youtube-play {
+    width: var(--s-25);
+    height: var(--s-24);
+    background: #ff0000;
+    display: flex;
+}
+
+/* ======================== COMMON ====================*/
+/* Hover effect */
+.block-preview:hover .youtube-play,
+.block-preview:hover .album-play {
+    transform: translate(-50%, -50%) scale(1.08);
+}
+/* White play triangle */
+.play-triangle {
+    width: 0;
+    height: 0;
+    border-top: var(--s-5) solid transparent;
+    border-bottom: var(--s-5) solid transparent;
+    border-left: var(--s-8) solid white;
+    margin-left: var(--s-2);
+}
+
+.flex-container {
+    display: flex;
+    gap: var(--s-3); /* Optional: adds clean spacing between boxes */
+}
+
+.photo-album,
+.block-preview {
+    max-width: 340px;
+    margin: auto;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: var(--s-5);
+    position: relative;
+    cursor: pointer;
+}
+
+/* Center play button */
+.youtube-play,
+.album-play {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: var(--s-6);
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease;
+}
+
+/* Bottom gradient */
+.gradient {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 35%;
+    background: linear-gradient( to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75) );
+    pointer-events: none;
+}
+
+.map-icon {
+    width: var(--s-8);
+    height: var(--s-8);
+}
+
+/* =================PHOTO ALBUM============= */
+
+.album-play {
+    background: rgba(0,0,0,0.05);
+    width: 168px;
+    height: var(--s-25);
+    display: grid;
+}
+
+.album-view {
+    font-size: medium;
+    color: #FFF;
+}
+
+    .album-view::after {
+        content: "View Photo Album";
+    }
+
+
+/*  DEPreaed also----------------------------------*/
+.photo-album {
+}
+
+    .photo-album img {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+.album-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient( to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.65) );
+    color: white;
+    text-align: center;
+}
+
+.play-icon {
+    font-size: 60px;
+}
+
+.album-subtitle {
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+
+
+/*============------------------------- DEPRICATED*/
 
 .ggl-album,
 .youtube-frm,
