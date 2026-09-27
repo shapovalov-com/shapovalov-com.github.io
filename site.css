@@ -134,10 +134,9 @@ h1, h2, h3, h4, p, a, a:visited {
     gap: var(--s-3); /* Optional: adds clean spacing between boxes */
 }
 
-.photo-album,
 .block-preview {
     max-width: 340px;
-    margin: auto;
+    margin: 2px;
     width: 100%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
@@ -194,52 +193,5 @@ h1, h2, h3, h4, p, a, a:visited {
     }
 
 
-/*  DEPreaed also----------------------------------*/
-.photo-album {
-}
-
-    .photo-album img {
-        display: block;
-        width: 100%;
-        height: auto;
-    }
-
-.album-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient( to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.65) );
-    color: white;
-    text-align: center;
-}
-
-.play-icon {
-    font-size: 60px;
-}
-
-.album-subtitle {
-    font-size: 16px;
-    margin-top: 5px;
-}
 
 
-
-/*============------------------------- DEPRICATED*/
-
-.ggl-album,
-.youtube-frm,
-.youtube-ctrl {
-    width: 350px;
-    height: 390px;
-}
-
-.youtube-ctrl {
-    float: right;
-}
-
-.ggl-album {
-    float: left;
-}
