@@ -13,7 +13,13 @@
    body's --bg, so the centered body column can sit on a distinct frame; the
    two default to the same paper. Once <html> paints its own background, the
    body's no longer propagates up to the canvas. */
-html { -webkit-text-size-adjust: 100%; background: var(--canvas); }
+html {
+    -webkit-text-size-adjust: 100%;
+    background-image: url("img/world-map-bg.svg");
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-attachment: fixed;
+}
 /* touch-action is not inherited, so it is applied universally. manipulation
    kills the 300ms tap delay and double-tap-to-zoom on Chromium-based mobile.
    iOS Safari's double-tap-zoom does NOT key off touch-action — it keys off
