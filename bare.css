@@ -15,11 +15,7 @@
    body's no longer propagates up to the canvas. */
 html {
     -webkit-text-size-adjust: 100%;
-    background-image: url("img/world-map-bg.svg");
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-    background-position:center;
+    background: var(--canvas);
 }
 /* touch-action is not inherited, so it is applied universally. manipulation
    kills the 300ms tap delay and double-tap-to-zoom on Chromium-based mobile.
